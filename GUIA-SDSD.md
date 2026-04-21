@@ -610,10 +610,142 @@ Proponha o comportamento correto para cada caso e implemente as correções.
 
 O shift-left só funciona de verdade quando as mesmas verificações locais também rodam no pipeline. Isso garante que nenhum código chega ao PR sem ter passado pela bateria completa.
 
-### Template de Pipeline (GitHub Actions)
+### 8.1 Semgrep (SAST)
+
+`.github/workflows/semgrep.yml`:
 
 ```yaml
-# .github/workflows/ci.yml
+name: Semgrep Security Scan
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  semgrep_scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep
+
+      - name: Run Semgrep (Enforce by PARANOIA_LEVEL)
+        run: |
+          PARANOIA_LEVEL=2   # ajuste aqui: 1 = critical/high (ERROR), 2 = high/medium (WARNING)
+
+          if [ "$PARANOIA_LEVEL" -eq 1 ]; then
+            echo "Rodando em modo PARANOIA 1 (trava apenas ERROR)"
+            semgrep --config auto --severity=ERROR --error
+          elif [ "$PARANOIA_LEVEL" -eq 2 ]; then
+            echo "Rodando em modo PARANOIA 2 (trava WARNING e acima)"
+            semgrep --config auto --severity=WARNING --error
+          else
+            echo "Rodando em modo PARANOIA 3 (trava INFO e acima)"
+            semgrep --config auto --severity=INFO --error
+          fi
+```
+
+**PARANOIA_LEVEL:** controla o nível de ruído aceitável.
+- `1` — só trava em `ERROR` (HIGH/CRITICAL). Adequado para times que ainda estão adotando o processo.
+- `2` — trava em `WARNING` e acima. Recomendado para projetos maduros.
+- `3` — trava em qualquer finding, incluindo `INFO`. Para ambientes de alta criticidade.
+
+---
+
+### 8.2 TruffleHog (Secrets)
+
+`.github/workflows/trufflehog.yml`:
+
+```yaml
+name: TruffleHog Secret Scanner
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trufflehog:
+    name: Scan for Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0  # necessário para varrer todo o histórico git
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          extra_args: --results=verified,unknown,unverified --debug
+```
+
+**Pontos críticos:**
+- `fetch-depth: 0` é obrigatório — sem histórico completo, secrets em commits antigos não são detectados.
+- `base`/`head` dinâmicos garantem que PRs e pushes diretos usem o delta correto.
+- `--results=verified,unknown,unverified` inclui secrets não confirmados — conservador por design.
+
+---
+
+### 8.3 Trivy (SCA — Dependências)
+
+`.github/workflows/trivy.yml`:
+
+```yaml
+name: Trivy Dependency Scan
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Trivy (SCA — filesystem)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
+          exit-code: 1
+```
+
+---
+
+### 8.4 Pipeline de Validação de Código
+
+`.github/workflows/ci.yml` — jobs de compilação e testes (adaptável por stack):
+
+```yaml
 name: CI
 
 on:
@@ -626,12 +758,12 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
       - name: Setup [Linguagem/Runtime]
         uses: actions/setup-[runtime]@v4
         with:
-          [versão configurada]
+          [versão]
 
       - name: Instalar dependências
         run: [comando de instalação]
@@ -641,34 +773,9 @@ jobs:
 
       - name: Testes
         run: [suite de testes]
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Semgrep (SAST)
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: auto
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
-
-      - name: Trivy (SCA — dependências)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          severity: HIGH,CRITICAL
-          exit-code: 1
-
-      - name: TruffleHog (Secrets)
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --only-verified
 ```
+
+---
 
 ### Estratégia de Fixação de Dependências
 

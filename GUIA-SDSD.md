@@ -1,13 +1,13 @@
-# Guia Técnico: Spec-Driven Development (SDD)
+# Guia Técnico: Spec-Driven Secure Development (SDSD)
 
 > Referência hands-on para qualquer analista do time.  
 > Cobre projetos **novos** e projetos **em andamento (legado)**.
 
 ---
 
-## O que é SDD?
+## O que é SDSD?
 
-Spec-Driven Development é um fluxo de trabalho onde **toda funcionalidade começa com especificações escritas antes do código**. O agente de IA trabalha a partir dos specs — não de prompts soltos. Isso garante rastreabilidade, alinhamento entre stakeholders e código revisável.
+Spec-Driven Secure Development é um fluxo de trabalho onde **toda funcionalidade começa com especificações escritas antes do código**. O agente de IA trabalha a partir dos specs — não de prompts soltos. Isso garante rastreabilidade, alinhamento entre stakeholders e código revisável.
 
 **Princípio central:** O spec é a fonte da verdade. O código implementa o spec. O changelog registra o histórico.
 
@@ -24,7 +24,8 @@ projeto/
 │   └── YYYY-MM-DD-nome-feature/    ← Uma pasta por funcionalidade
 │       ├── plan.md                 ← Grupos de tarefas numerados
 │       ├── requirements.md         ← Escopo, decisões, contexto
-│       └── validation.md           ← Como saber que está pronto para merge
+│       ├── validation.md           ← Como saber que está pronto para merge
+│       └── security.md             ← Entry points, riscos, critérios de segurança
 ├── skills/                         ← Skills reutilizáveis (opcionais)
 │   ├── changelog/
 │   │   ├── SKILL.md
@@ -41,7 +42,7 @@ projeto/
 
 ### Passo 1: Criar a Constituição
 
-A constituição são os três arquivos base que todo projeto SDD precisa antes de qualquer código.
+A constituição são os três arquivos base que todo projeto SDSD precisa antes de qualquer código.
 
 **Prompt para o agente:**
 ```
@@ -194,6 +195,36 @@ Deve cobrir: [lista de rotas/comportamentos]
 - [ ] Página X carrega em http://localhost:3000/x
 - [ ] Formulário Y envia e persiste
 - [ ] Layout responsivo em mobile (≤ 640px)
+
+### 4. Segurança (shift-left)
+- [ ] `semgrep --config auto` → 0 HIGH/CRITICAL
+- [ ] `trivy fs .` → 0 HIGH/CRITICAL
+- [ ] `trufflehog filesystem .` → 0 secrets expostos
+```
+
+`specs/YYYY-MM-DD-nome/security.md`:
+```markdown
+# Security — Nome da Feature
+
+## Entry Points
+- [ex: POST /rota, query params, upload de arquivo]
+
+## Riscos Identificados
+- [ ] Injeção (SQL / XSS / Command)
+- [ ] Dados sensíveis expostos em logs ou resposta
+- [ ] Input não validado no servidor
+- [ ] Secrets no código ou variáveis de ambiente
+
+## Requisitos de Segurança
+- [ ] Todos os inputs validados server-side
+- [ ] Saída sanitizada antes de renderizar no HTML
+- [ ] Nenhum secret hardcoded
+- [ ] Autenticação obrigatória (se rota protegida)
+
+## Definition of Done (Security)
+- [ ] semgrep → 0 HIGH/CRITICAL
+- [ ] trivy → 0 HIGH/CRITICAL
+- [ ] trufflehog → 0 findings
 ```
 
 ---
@@ -449,11 +480,15 @@ O agente analisa:
 [ ] specs/YYYY-MM-DD-nome/plan.md criado (grupos de tarefas)
 [ ] specs/YYYY-MM-DD-nome/requirements.md criado (escopo, decisões, contexto)
 [ ] specs/YYYY-MM-DD-nome/validation.md criado (definition of done)
+[ ] specs/YYYY-MM-DD-nome/security.md criado (entry points, riscos, requisitos)
 [ ] Implementação completa (todos os grupos do plan.md)
 [ ] npm run typecheck → exit 0
 [ ] npm test → todos passam
 [ ] Verificação manual no browser
 [ ] Spec atualizado se algo mudou durante implementação
+[ ] semgrep → 0 HIGH/CRITICAL
+[ ] trivy fs . → 0 HIGH/CRITICAL
+[ ] trufflehog filesystem . → 0 secrets
 [ ] Fase marcada como ✅ no roadmap.md
 [ ] CHANGELOG.md atualizado via skill changelog
 [ ] Commit feito com mensagem descritiva
@@ -473,3 +508,5 @@ O agente analisa:
 | Branch longa com muitas features | Dificulta revisão e rollback | Uma feature = uma branch = um merge |
 | Roadmap com fases grandes | Feature demora, feedback tardio | Fases devem ser implementáveis em uma sessão |
 | Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre AskUserQuestion ANTES de criar arquivos |
+| Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar semgrep/trivy/trufflehog localmente antes do commit |
+| Feature sem security.md | Riscos não documentados, sem critério de aceite | Todo spec de feature inclui security.md obrigatório |

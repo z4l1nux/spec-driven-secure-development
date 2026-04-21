@@ -334,9 +334,46 @@ Crie um spec retroativo em specs/YYYY-MM-DD-agents/ que documente:
 - Como validar que ainda funciona (validation.md)
 ```
 
-### Passo 3: Continuar com Feature Spec Normal
+### Passo 3: Primeiro Scan de Segurança (Legado)
 
-Após a constituição reconstruída, o fluxo é idêntico ao projeto novo (Passo 2 em diante).
+Projetos legados costumam ter dívida de segurança acumulada. O primeiro scan é diferente dos scans de feature: o objetivo não é bloquear o trabalho, mas **mapear o estado real** e criar um plano de remediação.
+
+**Estratégia em 3 etapas:**
+
+**Etapa 1 — Mapear (não bloquear):**
+```
+Rode o scan de segurança completo no projeto:
+- [SAST escolhido] em todo o diretório src/
+- [SCA escolhido] no manifesto de dependências
+- [Secrets escolhido] em todo o histórico git
+
+Não corrija ainda. Gere um relatório agrupado por:
+1. Severidade (CRITICAL → HIGH → MEDIUM → LOW)
+2. Categoria (injeção, secrets, dependências, etc.)
+3. Arquivo e linha de cada finding
+```
+
+**Etapa 2 — Triagem:**
+```
+Com base no relatório de segurança gerado, crie um backlog de remediação:
+- CRITICAL/HIGH: criar itens no roadmap.md para correção imediata (próximas 2 semanas)
+- MEDIUM: criar itens para o roadmap com prazo definido
+- LOW/INFO: aceitar ou ignorar conscientemente, documentando a decisão em security.md
+```
+
+**Etapa 3 — Estabelecer linha de base:**
+```
+Configure os workflows de CI/CD de segurança para este projeto legado.
+Use como linha de base os findings já mapeados — o CI não deve bloquear por issues já conhecidas,
+mas deve bloquear qualquer novo finding de severidade HIGH ou CRITICAL.
+Documente os comandos locais em specs/tech-stack.md.
+```
+
+> **Regra para legado:** nunca exija zero findings no dia 1. Exija que nenhum finding *novo* entre. A dívida existente entra no roadmap como trabalho planejado.
+
+### Passo 4: Continuar com Feature Spec Normal
+
+Após constituição reconstruída e primeiro scan feito, o fluxo é idêntico ao projeto novo (Passo 2 em diante).
 
 ---
 
@@ -608,9 +645,83 @@ Proponha o comportamento correto para cada caso e implemente as correções.
 
 ## PARTE 8 — Automação de CI/CD
 
-O shift-left só funciona de verdade quando as mesmas verificações locais também rodam no pipeline. Isso garante que nenhum código chega ao PR sem ter passado pela bateria completa.
+O shift-left funciona em dois momentos: **localmente, antes do commit**, e **no pipeline, antes do merge**. Ambos são obrigatórios — o CI é a rede de segurança, não o ponto primário de detecção.
 
-### 8.1 Semgrep (SAST)
+### 8.0 Escolha de Ferramentas por Stack
+
+O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem alternativas. Escolha uma por categoria e documente em `specs/tech-stack.md`.
+
+#### SAST — Análise Estática de Código
+
+| Ferramenta | Melhor para | Observação |
+|---|---|---|
+| **Semgrep** | Qualquer stack | Multilíngua, regras customizáveis, open source |
+| Bandit | Python | Nativo do ecossistema Python |
+| gosec | Go | Integrado ao go toolchain |
+| Brakeman | Ruby on Rails | Especializado em Rails |
+| ESLint + plugin-security | JavaScript / TypeScript | Reutiliza o linter já existente |
+| Checkov | IaC (Terraform, k8s) | Foca em misconfigurações de infraestrutura |
+
+#### SCA — Análise de Dependências
+
+| Ferramenta | Melhor para | Observação |
+|---|---|---|
+| **Trivy** | Qualquer stack | Multilíngua, também varre imagens Docker |
+| OWASP Dependency-Check | Java, .NET, multi | Referência do OWASP, relatórios detalhados |
+| Snyk | Qualquer stack | SaaS com IDE plugin; free tier limitado |
+| pip-audit | Python | Nativo do ecossistema Python |
+| npm audit | JavaScript / TypeScript | Embutido no npm, sem instalação extra |
+| govulncheck | Go | Ferramenta oficial do Go team |
+| bundler-audit | Ruby | Nativo do ecossistema Ruby/Bundler |
+
+#### Secrets — Detecção de Credenciais Expostas
+
+| Ferramenta | Melhor para | Observação |
+|---|---|---|
+| **TruffleHog** | Git history | Varre histórico completo de commits |
+| Gitleaks | Git history | Alternativa open source, config via TOML |
+| detect-secrets | Pre-commit local | Plugin de pre-commit hook, não varre histórico |
+| git-secrets | Pre-commit local | Foco em credenciais AWS, leve |
+
+> **Regra:** documente a ferramenta escolhida em `specs/tech-stack.md` na seção Security. Todos no time e o CI usam a mesma.
+
+---
+
+### 8.1 Prompts para Rodar Localmente
+
+Antes de qualquer commit em uma branch de feature, o analista deve rodar o scan local. Use estes prompts:
+
+**Scan completo (projeto novo ou feature em andamento):**
+```
+Rode o scan de segurança completo no diretório src/:
+- [SAST escolhido] — análise estática do código
+- [SCA escolhido] — vulnerabilidades em dependências
+- [Secrets escolhido] — credenciais expostas no histórico git
+Reporte os findings por ferramenta e severidade.
+Para cada HIGH ou CRITICAL, proponha a correção antes de continuarmos.
+```
+
+**Scan rápido (antes de cada commit):**
+```
+Rode o scan de segurança local nas mudanças desta branch:
+- [SAST]: semgrep --config auto src/
+- [SCA]: [comando da ferramenta escolhida]
+- [Secrets]: [comando da ferramenta escolhida] --since [hash do último commit em main]
+Mostre apenas HIGH e CRITICAL.
+```
+
+**Configurar ferramentas no projeto (primeira vez):**
+```
+Configure as ferramentas de segurança para este projeto:
+- Identifique qual SAST, SCA e Secrets scanner é mais adequado para a stack documentada em specs/tech-stack.md
+- Instale as ferramentas necessárias
+- Crie os workflows em .github/workflows/ para cada uma
+- Documente os comandos locais em specs/tech-stack.md na seção Security
+```
+
+---
+
+### 8.2 Semgrep (SAST)
 
 `.github/workflows/semgrep.yml`:
 
@@ -669,7 +780,7 @@ jobs:
 
 ---
 
-### 8.2 TruffleHog (Secrets)
+### 8.3 TruffleHog (Secrets)
 
 `.github/workflows/trufflehog.yml`:
 
@@ -712,7 +823,7 @@ jobs:
 
 ---
 
-### 8.3 Trivy (SCA — Dependências)
+### 8.4 Trivy (SCA — Dependências)
 
 `.github/workflows/trivy.yml`:
 
@@ -741,7 +852,7 @@ jobs:
 
 ---
 
-### 8.4 Pipeline de Validação de Código
+### 8.5 Pipeline de Validação de Código
 
 `.github/workflows/ci.yml` — jobs de compilação e testes (adaptável por stack):
 
@@ -814,6 +925,10 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 | Memory leaks | "Revise o código em busca de caches sem TTL, conexões não fechadas e listeners sem remoção correspondente." |
 | Fault tolerance | "Para cada rota, liste os failure modes possíveis e o comportamento atual. Proponha e implemente o tratamento correto." |
 | Dependências fixas | "Revise o manifesto de dependências. Liste versões flutuantes e proponha versões fixas equivalentes." |
+| **Segurança — configurar ferramentas** | "Identifique o SAST, SCA e Secrets scanner mais adequado para a stack em specs/tech-stack.md. Instale, configure e crie os workflows em .github/workflows/. Documente os comandos locais em specs/tech-stack.md." |
+| **Segurança — scan local (feature)** | "Rode o scan de segurança local: [SAST] em src/, [SCA] no manifesto, [Secrets] no histórico desta branch. Reporte HIGH e CRITICAL. Para cada um, proponha a correção antes de continuarmos." |
+| **Segurança — primeiro scan (legado)** | "Rode o scan completo sem bloquear. Gere relatório por severidade e categoria. Depois crie o backlog de remediação no roadmap.md separando imediato (CRITICAL/HIGH) de planejado (MEDIUM)." |
+| **Segurança — adicionar CI** | "Crie os workflows .github/workflows/ para [SAST], [SCA] e [Secrets] escolhidos em specs/tech-stack.md. Use os exemplos da PARTE 8 do guia como base." |
 
 ---
 
@@ -836,10 +951,12 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 [ ] Failure modes documentados no requirements.md e tratados no código
 [ ] Sem caches sem TTL ou conexões não fechadas
 --- Segurança ---
-[ ] semgrep → 0 HIGH/CRITICAL
-[ ] trivy fs . → 0 HIGH/CRITICAL
-[ ] trufflehog filesystem . → 0 secrets
+[ ] [SAST: semgrep / bandit / gosec / outro] → 0 HIGH/CRITICAL
+[ ] [SCA: trivy / npm audit / pip-audit / outro] → 0 HIGH/CRITICAL
+[ ] [Secrets: trufflehog / gitleaks / outro] → 0 findings
 [ ] Dependências com versão fixa (sem ^ ou ~ em produção)
+[ ] Workflows de CI/CD de segurança criados em .github/workflows/
+[ ] Ferramentas escolhidas documentadas em specs/tech-stack.md
 --- Merge ---
 [ ] Fase marcada como ✅ no roadmap.md
 [ ] CHANGELOG.md atualizado via skill changelog
@@ -860,7 +977,7 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 | Branch longa com muitas features | Dificulta revisão e rollback | Uma feature = uma branch = um merge |
 | Roadmap com fases grandes | Feature demora, feedback tardio | Fases devem ser implementáveis em uma sessão |
 | Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre AskUserQuestion ANTES de criar arquivos |
-| Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar semgrep/trivy/trufflehog localmente antes do commit |
+| Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar SAST/SCA/Secrets localmente antes do commit — CI é rede de segurança, não ponto primário |
 | Feature sem security.md | Riscos não documentados, sem critério de aceite | Todo spec de feature inclui security.md obrigatório |
 | Rotas sem budget de queries | N+1 invisível em dev, colapso em produção | Documentar limite de queries no requirements.md e validar |
 | Sem failure modes no spec | Código trata só o caminho feliz | Seção Confiabilidade no requirements.md com cenários de falha |

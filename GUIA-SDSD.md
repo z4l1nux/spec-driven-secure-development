@@ -736,9 +736,6 @@ on:
     branches:
       - "**"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   semgrep_scan:
     runs-on: ubuntu-latest
@@ -793,9 +790,6 @@ on:
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   trufflehog:

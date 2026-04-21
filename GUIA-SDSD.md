@@ -327,7 +327,7 @@ Para features críticas já implementadas, vale criar specs retroativos para doc
 
 **Prompt:**
 ```
-O código em src/routes/agents.tsx e src/components/AgentsList.tsx já está implementado.
+O código já está implementado.
 Crie um spec retroativo em specs/YYYY-MM-DD-agents/ que documente:
 - O que foi implementado (plan.md com tarefas concluídas)
 - As decisões que foram tomadas (requirements.md)

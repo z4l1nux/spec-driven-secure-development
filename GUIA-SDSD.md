@@ -80,13 +80,13 @@ Importante: você DEVE usar AskUserQuestion, agrupada em 3 perguntas, antes de e
 ## Core
 | Layer | Choice | Rationale |
 |---|---|---|
-| Language | TypeScript | ... |
-| Framework | Hono | ... |
-| Database | SQLite | ... |
+| Language | [Linguagem] | [motivo] |
+| Framework | [Framework] | [motivo] |
+| Database | [Banco] | [motivo] |
 ## Testing
-- Vitest — rápido, TypeScript-native
-## CSS Approach
-Mobile-first, custom properties
+- [Framework de testes] — [característica principal]
+## CSS / UI
+[Abordagem: mobile-first, design system, etc.]
 ```
 
 `specs/roadmap.md`:
@@ -152,8 +152,8 @@ Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
 8. Teste POST /rota → redirect ou confirmação
 
 ## Group 5 — Verificação
-9. npm run typecheck → 0 erros
-10. npm test → todos passam
+9. [verificação de tipos] → 0 erros
+10. [suite de testes] → todos passam
 ```
 
 `specs/YYYY-MM-DD-nome/requirements.md`:
@@ -174,6 +174,20 @@ Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
 | Decisão | Escolha | Motivo |
 |---|---|---|
 
+## Non-Functional Requirements
+
+### Performance
+- Budget de queries: esta rota não deve exceder [N] queries por requisição
+- [Tempo de resposta esperado, se relevante]
+
+### Confiabilidade
+- Failure modes identificados: [ex: o que acontece se o banco cair?]
+- A feature deve ser resiliente a: [ex: timeout externo, dado ausente]
+
+### Concorrência
+- Risco de race condition: [Sim / Não / Baixo]
+- Se Sim: [descrever o cenário e a mitigação, ex: transaction, lock, idempotency key]
+
 ## Context
 Tom, stack, padrões existentes a seguir.
 ```
@@ -184,11 +198,11 @@ Tom, stack, padrões existentes a seguir.
 
 ## Definition of Done
 
-### 1. TypeScript compila
-`npm run typecheck` → exit 0
+### 1. Código compila sem erros
+`[verificação de tipos]` → exit 0
 
 ### 2. Testes passam
-`npm test` → exit 0
+`[suite de testes]` → exit 0
 Deve cobrir: [lista de rotas/comportamentos]
 
 ### 3. Verificação manual
@@ -196,7 +210,11 @@ Deve cobrir: [lista de rotas/comportamentos]
 - [ ] Formulário Y envia e persiste
 - [ ] Layout responsivo em mobile (≤ 640px)
 
-### 4. Segurança (shift-left)
+### 4. Performance
+- [ ] Rota X não ultrapassa [N] queries por requisição
+- [ ] Sem alocações sem TTL identificadas no profiling local
+
+### 5. Segurança (shift-left)
 - [ ] `semgrep --config auto` → 0 HIGH/CRITICAL
 - [ ] `trivy fs .` → 0 HIGH/CRITICAL
 - [ ] `trufflehog filesystem .` → 0 secrets expostos
@@ -448,11 +466,225 @@ bem como qualquer código.
 Quais partes do nosso código precisam de mais testes?
 ```
 
-O agente analisa:
+O agente analiza:
 - Rotas testadas vs não testadas
 - Componentes com e sem testes unitários
 - Lógica de banco e middleware
 - Top lacunas de risco (o que quebraria em produção sem ser detectado)
+
+---
+
+## PARTE 7 — Qualidade e Resiliência
+
+### 7.1 Problema N+1 (Excesso de Queries)
+
+**O problema:** o agente cria loops que fazem uma query por item em vez de uma query com JOIN ou batch. Em desenvolvimento funciona; em produção, o banco colapsa.
+
+**Como documentar no spec:**
+
+Em `requirements.md`, seção Non-Functional Requirements:
+```
+Budget de queries: GET /rota não deve exceder 3 queries por requisição
+```
+
+Em `validation.md`:
+```
+- [ ] GET /rota: verificado com [query counter / logging de queries] → ≤ 3 queries
+```
+
+**Prompt para o agente:**
+```
+Analise as rotas implementadas e identifique potenciais problemas N+1.
+Para cada rota com loop sobre coleção, mostre o número de queries gerado
+e proponha a query consolidada equivalente (JOIN ou batch).
+```
+
+**Técnica de detecção:** configure um middleware de contagem de queries que loga ou alerta quando o limite for ultrapassado. O threshold seguro varia por rota — documente o valor no `requirements.md`.
+
+---
+
+### 7.2 Race Conditions
+
+**O problema:** operações assíncronas simultâneas podem se atropelar — saldos negativos, reservas duplas, deadlocks.
+
+**Como documentar no spec:**
+
+Em `requirements.md`, seção Concorrência:
+```
+Risco de race condition: Sim
+Cenário: dois usuários reservando o mesmo horário simultaneamente
+Mitigação: transaction com lock no nível do banco / idempotency key
+```
+
+**Técnica — Property-Based Testing:**
+
+Em vez de testar com uma entrada estática, bibliotecas de property-based testing bombardeiam o sistema com combinações aleatórias para garantir que invariantes se mantenham:
+
+| Linguagem | Biblioteca |
+|---|---|
+| Python | Hypothesis |
+| JavaScript / TypeScript | fast-check |
+| Java | jqwik |
+| Go | gopter |
+| Elixir | StreamData |
+
+**Propriedade a testar:**
+```
+Para qualquer sequência de N requisições simultâneas de reserva,
+o sistema nunca deve criar mais reservas do que vagas disponíveis.
+```
+
+**Prompt para o agente:**
+```
+Identifique operações de escrita que podem sofrer race condition.
+Para cada uma, proponha: a propriedade invariante a garantir,
+a estratégia de mitigação (lock, transaction, idempotency key)
+e um teste property-based que a valide.
+```
+
+---
+
+### 7.3 Memory Leaks
+
+**O problema:** caches sem TTL, event listeners não removidos, conexões não fechadas. A memória cresce ao longo do dia até derrubar a aplicação.
+
+**Sinais de alerta no código gerado pelo agente:**
+- Cache em memória sem limite de tamanho ou tempo de expiração
+- Conexões de banco abertas fora de um pool
+- Event listeners registrados dentro de loops
+
+**Técnicas de detecção por linguagem:**
+
+| Linguagem | Ferramenta |
+|---|---|
+| Go | pprof |
+| Python | py-spy, tracemalloc |
+| Node.js | --inspect + Chrome DevTools heap snapshot |
+| JVM | async-profiler, VisualVM |
+| Android | LeakCanary |
+
+**Prompt para o agente:**
+```
+Revise o código em busca de:
+- Caches em memória sem TTL ou limite de tamanho
+- Conexões ou recursos abertos que não são fechados explicitamente
+- Event listeners ou callbacks registrados sem remoção correspondente
+Liste cada ocorrência com o risco associado e a correção recomendada.
+```
+
+---
+
+### 7.4 Fault Tolerance (Tolerância a Falhas)
+
+**O problema:** o agente escreve o caminho feliz. Não pensa no que acontece quando o banco cai, o serviço externo não responde ou o dado esperado não está lá.
+
+**Como documentar no spec:**
+
+Em `requirements.md`, seção Confiabilidade:
+```
+Failure modes identificados:
+- Banco indisponível → retornar 503, não 500 sem mensagem
+- Serviço externo com timeout → fallback para cache ou mensagem de erro clara
+- Dado ausente (registro deletado) → 404 com mensagem descritiva
+```
+
+**Checklist de revisão:**
+
+```
+[ ] Cada rota tem tratamento explícito para dado ausente (404 vs 500)
+[ ] Conexões externas têm timeout configurado
+[ ] Erros de banco são capturados e logados sem vazar stack trace para o cliente
+[ ] A aplicação inicia mesmo se uma dependência opcional estiver fora
+```
+
+**Prompt para o agente:**
+```
+Para cada rota implementada, liste os failure modes possíveis
+(banco fora, dado ausente, timeout externo) e o comportamento atual.
+Proponha o comportamento correto para cada caso e implemente as correções.
+```
+
+---
+
+## PARTE 8 — Automação de CI/CD
+
+O shift-left só funciona de verdade quando as mesmas verificações locais também rodam no pipeline. Isso garante que nenhum código chega ao PR sem ter passado pela bateria completa.
+
+### Template de Pipeline (GitHub Actions)
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup [Linguagem/Runtime]
+        uses: actions/setup-[runtime]@v4
+        with:
+          [versão configurada]
+
+      - name: Instalar dependências
+        run: [comando de instalação]
+
+      - name: Verificação de tipos
+        run: [verificação de tipos]
+
+      - name: Testes
+        run: [suite de testes]
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep (SAST)
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: auto
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Trivy (SCA — dependências)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+      - name: TruffleHog (Secrets)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+```
+
+### Estratégia de Fixação de Dependências
+
+O agente tende a instalar a versão mais recente de tudo. Isso é um vetor de ataque de supply chain — uma atualização maliciosa de um pacote pode comprometer seu build.
+
+**Prática recomendada:**
+- Commitar o lockfile (`package-lock.json`, `poetry.lock`, `go.sum`, `Gemfile.lock`, etc.)
+- Usar versões fixas (sem `^` ou `~` em manifests de produção)
+- Auditar atualizações antes de aplicar — não deixar o bot de atualização automática fazer merge sem revisão
+
+**Prompt para o agente:**
+```
+Revise o manifesto de dependências (package.json, requirements.txt, go.mod, etc.).
+Liste qualquer dependência com versão flutuante (^, ~, latest).
+Proponha as versões fixas equivalentes e explique o risco de cada dependência com versão aberta.
+```
 
 ---
 
@@ -470,6 +702,11 @@ O agente analisa:
 | Projeto legado | "Crie uma constituição baseada no código existente. Entreviste-me sobre missão, público-alvo e lacunas na stack." |
 | Cobertura de testes | "Quais partes do nosso código precisam de mais testes?" |
 | Replanejamento | "Combine as fases X-Y em uma única fase no roadmap." |
+| N+1 / queries | "Analise as rotas e identifique problemas N+1. Mostre o número de queries por rota e proponha a query consolidada." |
+| Race conditions | "Identifique operações de escrita com risco de race condition, proponha a invariante a garantir e implemente a mitigação." |
+| Memory leaks | "Revise o código em busca de caches sem TTL, conexões não fechadas e listeners sem remoção correspondente." |
+| Fault tolerance | "Para cada rota, liste os failure modes possíveis e o comportamento atual. Proponha e implemente o tratamento correto." |
+| Dependências fixas | "Revise o manifesto de dependências. Liste versões flutuantes e proponha versões fixas equivalentes." |
 
 ---
 
@@ -478,17 +715,25 @@ O agente analisa:
 ```
 [ ] Branch criada com nome YYYY-MM-DD-nome-kebab
 [ ] specs/YYYY-MM-DD-nome/plan.md criado (grupos de tarefas)
-[ ] specs/YYYY-MM-DD-nome/requirements.md criado (escopo, decisões, contexto)
+[ ] specs/YYYY-MM-DD-nome/requirements.md criado (escopo, decisões, contexto, NFRs)
 [ ] specs/YYYY-MM-DD-nome/validation.md criado (definition of done)
 [ ] specs/YYYY-MM-DD-nome/security.md criado (entry points, riscos, requisitos)
 [ ] Implementação completa (todos os grupos do plan.md)
-[ ] npm run typecheck → exit 0
-[ ] npm test → todos passam
+[ ] [verificação de tipos] → exit 0
+[ ] [suite de testes] → todos passam
 [ ] Verificação manual no browser
 [ ] Spec atualizado se algo mudou durante implementação
+--- Qualidade e Resiliência ---
+[ ] Rotas com coleção revisadas para N+1 — budget de queries documentado no requirements.md
+[ ] Operações de escrita concorrente têm mitigação (lock / transaction / idempotency key)
+[ ] Failure modes documentados no requirements.md e tratados no código
+[ ] Sem caches sem TTL ou conexões não fechadas
+--- Segurança ---
 [ ] semgrep → 0 HIGH/CRITICAL
 [ ] trivy fs . → 0 HIGH/CRITICAL
 [ ] trufflehog filesystem . → 0 secrets
+[ ] Dependências com versão fixa (sem ^ ou ~ em produção)
+--- Merge ---
 [ ] Fase marcada como ✅ no roadmap.md
 [ ] CHANGELOG.md atualizado via skill changelog
 [ ] Commit feito com mensagem descritiva
@@ -510,3 +755,7 @@ O agente analisa:
 | Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre AskUserQuestion ANTES de criar arquivos |
 | Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar semgrep/trivy/trufflehog localmente antes do commit |
 | Feature sem security.md | Riscos não documentados, sem critério de aceite | Todo spec de feature inclui security.md obrigatório |
+| Rotas sem budget de queries | N+1 invisível em dev, colapso em produção | Documentar limite de queries no requirements.md e validar |
+| Sem failure modes no spec | Código trata só o caminho feliz | Seção Confiabilidade no requirements.md com cenários de falha |
+| Versões flutuantes de dependências | Supply chain: atualização maliciosa entra sem revisão | Fixar versões no manifesto e commitar o lockfile |
+| Sem property-based testing em escrita concorrente | Race conditions passam despercebidas nos testes unitários | Identificar invariantes e usar biblioteca de property-based testing |

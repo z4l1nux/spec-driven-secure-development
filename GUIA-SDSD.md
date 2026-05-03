@@ -13,6 +13,20 @@ Spec-Driven Secure Development é um fluxo de trabalho onde **toda funcionalidad
 
 ---
 
+## 🚀 Por onde começar (Onboarding)
+
+Se você é novo no projeto ou no fluxo SDSD:
+
+1. **Instale o Claude Code** (ou a ferramenta de agente que o time usa)
+2. **Leia nesta ordem:** `specs/mission.md` → `specs/tech-stack.md` → `specs/roadmap.md`
+3. **Entenda o fluxo:** toda tarefa segue o ciclo P→E→V (ou completo P→R→E→V→C para features grandes — veja a tabela de escala abaixo)
+4. **Nunca escreva código sem spec.** Se não existe spec, crie antes de codar.
+5. **Nunca mude código sem atualizar o spec.** Eles andam juntos, sempre.
+
+> Se o projeto ainda não tem `specs/`, você está no **Projeto Novo** (PARTE 1). Se já tem código mas não tem specs, você está no **Projeto Legado** (PARTE 2).
+
+---
+
 ## Estrutura de Arquivos
 
 ```
@@ -35,6 +49,28 @@ projeto/
 ├── CHANGELOG.md                    ← Gerado pela skill changelog
 └── src/                            ← Código
 ```
+
+---
+
+## Escala do Workflow — Qual fluxo usar?
+
+Nem toda tarefa precisa do fluxo completo. Use a tabela abaixo para decidir:
+
+| Escala | Fases | Quando usar |
+|---|---|---|
+| **QUICK** | E → V | Bugfix, ajuste de texto, correção visual pequena |
+| **SMALL** | P → E → V | Feature simples, nova rota sem lógica complexa |
+| **MEDIUM** | P → R → E → V | Feature regular, nova entidade, integração externa |
+| **LARGE** | P → R → E → V → C | Sistema complexo, múltiplos stakeholders, requisito de compliance |
+
+**Fases:**
+- **P (Planning):** Escrever specs (plan.md, requirements.md, validation.md, security.md) antes de qualquer código
+- **R (Review):** Validar arquitetura, decisões técnicas e riscos antes de implementar
+- **E (Execution):** Implementar seguindo os grupos do plan.md
+- **V (Validation):** Rodar testes, scans de segurança, verificação manual
+- **C (Confirmation):** Atualizar changelog, fazer merge, deletar branch, comunicar stakeholders
+
+> **Regra prática:** em caso de dúvida, use MEDIUM. O custo de escrever um spec é menor que o de refatorar código sem rastreabilidade.
 
 ---
 
@@ -87,6 +123,10 @@ Importante: você DEVE usar AskUserQuestion, agrupada em 3 perguntas, antes de e
 - [Framework de testes] — [característica principal]
 ## CSS / UI
 [Abordagem: mobile-first, design system, etc.]
+## Security
+- SAST: [ferramenta escolhida] — comando local: `[comando]`
+- SCA: [ferramenta escolhida] — comando local: `[comando]`
+- Secrets: [ferramenta escolhida] — comando local: `[comando]`
 ```
 
 `specs/roadmap.md`:
@@ -98,7 +138,7 @@ Importante: você DEVE usar AskUserQuestion, agrupada em 3 perguntas, antes de e
 ## Phase 2 — ...
 ```
 
-> **Regra:** cada fase do roadmap deve ser implementável em uma sessão focada e independentemente mergeável.
+> **Regra:** cada fase do roadmap deve ser implementável em uma sessão focada e independentemente mergeável. Como guia de granularidade: máximo de 5 grupos no `plan.md`, máximo de 3 entidades novas ou 5 rotas por fase. Se ultrapassar, divida.
 
 ---
 
@@ -113,6 +153,7 @@ Crie um novo diretório YYYY-MM-DD-nome-da-funcionalidade em specs com:
 - plan.md — grupos de tarefas numerados
 - requirements.md — escopo, decisões, contexto
 - validation.md — como saber se pode ser mergeado
+- security.md — entry points, riscos, critérios de segurança
 
 Consulte specs/mission.md e specs/tech-stack.md para orientação.
 Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
@@ -272,6 +313,8 @@ Sincronize o restante da especificação.
 
 O agente atualiza `plan.md`, `requirements.md` e `validation.md` juntos — specs e código sempre em sincronia.
 
+**Regra de resolução de conflito spec vs. código:** se spec e código dizem coisas diferentes, a pergunta é *qual está mais atualizado*. Se o código mudou por uma razão válida durante a implementação → atualize o spec para refletir o que foi feito e documente o motivo em `requirements.md` na seção Decisions. Se o spec mudou por decisão do time após a implementação → atualize o código para seguir o spec. Nunca deixe os dois divergirem sem registrar a decisão.
+
 ---
 
 ### Passo 5: Marcar Fase como Concluída e Fazer Merge
@@ -424,7 +467,7 @@ Use sua skill feature-spec para trabalhar na próxima funcionalidade do roadmap.
 2. Cria branch `YYYY-MM-DD-nome`
 3. Faz AskUserQuestion com 3 perguntas (Escopo / Decisões / Contexto)
 4. Lê `specs/mission.md` e `specs/tech-stack.md`
-5. Cria `specs/YYYY-MM-DD-nome/` com `plan.md`, `requirements.md`, `validation.md`
+5. Cria `specs/YYYY-MM-DD-nome/` com `plan.md`, `requirements.md`, `validation.md`, `security.md`
 
 ### Criando uma Nova Skill
 
@@ -458,7 +501,40 @@ description: Uma frase clara sobre quando usar esta skill.
 
 ---
 
-## PARTE 4 — Revisão com Múltiplos Subagentes
+## PARTE 4 — Agentes Especializados
+
+O agente de IA pode assumir **perspectivas especializadas** dependendo da fase do trabalho. Isso melhora a qualidade porque cada perspectiva tem foco, vocabulário e critérios diferentes.
+
+### Quando usar cada perfil de agente
+
+| Perfil | Fase ideal | Foco |
+|---|---|---|
+| **architect-specialist** | P, R | Estrutura, padrões, decisões de longo prazo, trade-offs |
+| **feature-developer** | E | Implementação seguindo spec, grupos do plan.md em ordem |
+| **security-auditor** | R, V | Entry points, OWASP Top 10, critérios do security.md |
+| **performance-optimizer** | V | N+1, budget de queries, memory leaks, profiling |
+| **code-reviewer** | V | Qualidade, tipagem, anti-patterns, cobertura de testes |
+| **bug-fixer** | E (hotfix) | Isolamento do problema, reprodução mínima, fix cirúrgico |
+| **test-writer** | E, V | Cobertura de rotas, property-based testing, edge cases |
+| **documentation-writer** | C | README, howtos, atualização de specs retroativos |
+
+**Como invocar um perfil específico:**
+```
+Aja como [perfil]. Contexto: [descreva o estado atual].
+Seu objetivo nesta sessão: [objetivo específico da fase].
+```
+
+**Exemplo para revisão antes de merge:**
+```
+Aja como code-reviewer. Analise todas as mudanças desta branch com foco em:
+1. Qualidade de código e tipagem
+2. Alinhamento entre spec e implementação
+3. Cobertura de testes e edge cases não tratados
+```
+
+---
+
+## PARTE 5 — Revisão com Múltiplos Subagentes
 
 Para revisões profundas antes de merge, use subagentes paralelos com perspectivas diferentes.
 
@@ -475,7 +551,7 @@ desta branch de três perspectivas diferentes e ver se algo não faz sentido, po
 
 ---
 
-## PARTE 5 — Replanejamento do Roadmap
+## PARTE 6 — Replanejamento do Roadmap
 
 Quando o escopo muda (features combinadas, depriorizadas ou divididas):
 
@@ -496,14 +572,14 @@ bem como qualquer código.
 
 ---
 
-## PARTE 6 — Análise de Cobertura de Testes
+## PARTE 7 — Análise de Cobertura de Testes
 
 **Prompt:**
 ```
 Quais partes do nosso código precisam de mais testes?
 ```
 
-O agente analiza:
+O agente analisa:
 - Rotas testadas vs não testadas
 - Componentes com e sem testes unitários
 - Lógica de banco e middleware
@@ -511,9 +587,9 @@ O agente analiza:
 
 ---
 
-## PARTE 7 — Qualidade e Resiliência
+## PARTE 8 — Qualidade e Resiliência
 
-### 7.1 Problema N+1 (Excesso de Queries)
+### 8.1 Problema N+1 (Excesso de Queries)
 
 **O problema:** o agente cria loops que fazem uma query por item em vez de uma query com JOIN ou batch. Em desenvolvimento funciona; em produção, o banco colapsa.
 
@@ -540,7 +616,7 @@ e proponha a query consolidada equivalente (JOIN ou batch).
 
 ---
 
-### 7.2 Race Conditions
+### 8.2 Race Conditions
 
 **O problema:** operações assíncronas simultâneas podem se atropelar — saldos negativos, reservas duplas, deadlocks.
 
@@ -581,7 +657,7 @@ e um teste property-based que a valide.
 
 ---
 
-### 7.3 Memory Leaks
+### 8.3 Memory Leaks
 
 **O problema:** caches sem TTL, event listeners não removidos, conexões não fechadas. A memória cresce ao longo do dia até derrubar a aplicação.
 
@@ -611,7 +687,7 @@ Liste cada ocorrência com o risco associado e a correção recomendada.
 
 ---
 
-### 7.4 Fault Tolerance (Tolerância a Falhas)
+### 8.4 Fault Tolerance (Tolerância a Falhas)
 
 **O problema:** o agente escreve o caminho feliz. Não pensa no que acontece quando o banco cai, o serviço externo não responde ou o dado esperado não está lá.
 
@@ -643,11 +719,11 @@ Proponha o comportamento correto para cada caso e implemente as correções.
 
 ---
 
-## PARTE 8 — Automação de CI/CD
+## PARTE 9 — Automação de CI/CD
 
 O shift-left funciona em dois momentos: **localmente, antes do commit**, e **no pipeline, antes do merge**. Ambos são obrigatórios — o CI é a rede de segurança, não o ponto primário de detecção.
 
-### 8.0 Escolha de Ferramentas por Stack
+### 9.0 Escolha de Ferramentas por Stack
 
 O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem alternativas. Escolha uma por categoria e documente em `specs/tech-stack.md`.
 
@@ -687,7 +763,35 @@ O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem 
 
 ---
 
-### 8.1 Prompts para Rodar Localmente
+### 9.1 O que fazer quando um secret é encontrado
+
+Quando o TruffleHog (ou qualquer scanner de secrets) retorna um finding, siga este protocolo:
+
+**1. Revogar imediatamente** — acesse o painel do serviço (AWS, GitHub, Stripe, etc.) e invalide a credencial encontrada. Não espere confirmar se foi usado de forma maliciosa.
+
+**2. Rotar** — gere uma nova credencial e atualize nos ambientes necessários (`.env`, secrets manager, CI/CD).
+
+**3. Limpar o histórico git** — se o secret foi commitado, ele persiste no histórico mesmo após remoção do arquivo. Use:
+```bash
+# Instalar
+pip install git-filter-repo
+
+# Remover o secret do histórico (substitua pelo valor real)
+git filter-repo --replace-text <(echo "SECRET_VALOR==>SECRET_VALOR_REDACTED")
+
+# Forçar push (coordenar com o time — reescreve histórico)
+git push --force --all
+```
+
+**4. Auditar o acesso** — verifique nos logs do serviço se a credencial foi usada por alguém além do time. Documente a conclusão.
+
+**5. Adicionar ao pre-commit** — configure `detect-secrets` ou `gitleaks` como pre-commit hook para impedir reincidência.
+
+> **Regra:** nunca commitar um secret, mesmo em repositório privado. Se aconteceu, o secret está comprometido — revogar é obrigatório, não opcional.
+
+---
+
+### 9.2 Prompts para Rodar Localmente
 
 Antes de qualquer commit em uma branch de feature, o analista deve rodar o scan local. Use estes prompts:
 
@@ -721,7 +825,7 @@ Configure as ferramentas de segurança para este projeto:
 
 ---
 
-### 8.2 Semgrep (SAST)
+### 9.3 Semgrep (SAST)
 
 `.github/workflows/semgrep.yml`:
 
@@ -777,7 +881,7 @@ jobs:
 
 ---
 
-### 8.3 TruffleHog (Secrets)
+### 9.4 TruffleHog (Secrets)
 
 `.github/workflows/trufflehog.yml`:
 
@@ -817,7 +921,7 @@ jobs:
 
 ---
 
-### 8.4 Trivy (SCA — Dependências)
+### 9.5 Trivy (SCA — Dependências)
 
 `.github/workflows/trivy.yml`:
 
@@ -846,7 +950,7 @@ jobs:
 
 ---
 
-### 8.5 Pipeline de Validação de Código
+### 9.6 Pipeline de Validação de Código
 
 `.github/workflows/ci.yml` — jobs de compilação e testes (adaptável por stack):
 
@@ -900,6 +1004,35 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 
 ---
 
+## PARTE 10 — Sincronização Multi-Ferramenta
+
+O time pode usar diferentes agentes de código (Claude Code, Cursor, Copilot, Windsurf). Os specs do SDSD funcionam em qualquer ferramenta, mas as regras de código (`AGENTS.md`) precisam estar acessíveis em cada uma.
+
+### Estratégia de sincronização
+
+**Fonte da verdade:** `AGENTS.md` na raiz do repositório. Toda regra de código vive aqui.
+
+**Exportar para cada ferramenta:**
+
+| Ferramenta | Onde colocar as regras |
+|---|---|
+| Claude Code | `CLAUDE.md` na raiz (ou `.claude/`) |
+| Cursor | `.cursor/rules/` |
+| Copilot | `.github/copilot-instructions.md` |
+| Windsurf | `.windsurf/rules/` |
+| Codex | `AGENTS.md` (já lido nativamente) |
+
+**Prompt para manter sincronizado:**
+```
+Leia o AGENTS.md na raiz do projeto.
+Exporte as regras para [ferramenta]: crie [arquivo de destino] com o mesmo conteúdo
+adaptado para o formato que [ferramenta] espera.
+```
+
+**Regra:** nunca edite os arquivos de destino diretamente. Sempre edite o `AGENTS.md` e re-exporte. Isso evita regras divergentes entre ferramentas.
+
+---
+
 ## Referência Rápida de Prompts
 
 | Situação | Prompt |
@@ -919,10 +1052,13 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 | Memory leaks | "Revise o código em busca de caches sem TTL, conexões não fechadas e listeners sem remoção correspondente." |
 | Fault tolerance | "Para cada rota, liste os failure modes possíveis e o comportamento atual. Proponha e implemente o tratamento correto." |
 | Dependências fixas | "Revise o manifesto de dependências. Liste versões flutuantes e proponha versões fixas equivalentes." |
+| Agente especializado | "Aja como [perfil de agente]. Contexto: [estado atual]. Objetivo: [fase atual]." |
 | **Segurança — configurar ferramentas** | "Identifique o SAST, SCA e Secrets scanner mais adequado para a stack em specs/tech-stack.md. Instale, configure e crie os workflows em .github/workflows/. Documente os comandos locais em specs/tech-stack.md." |
 | **Segurança — scan local (feature)** | "Rode o scan de segurança local: [SAST] em src/, [SCA] no manifesto, [Secrets] no histórico desta branch. Reporte HIGH e CRITICAL. Para cada um, proponha a correção antes de continuarmos." |
 | **Segurança — primeiro scan (legado)** | "Rode o scan completo sem bloquear. Gere relatório por severidade e categoria. Depois crie o backlog de remediação no roadmap.md separando imediato (CRITICAL/HIGH) de planejado (MEDIUM)." |
-| **Segurança — adicionar CI** | "Crie os workflows .github/workflows/ para [SAST], [SCA] e [Secrets] escolhidos em specs/tech-stack.md. Use os exemplos da PARTE 8 do guia como base." |
+| **Segurança — adicionar CI** | "Crie os workflows .github/workflows/ para [SAST], [SCA] e [Secrets] escolhidos em specs/tech-stack.md. Use os exemplos da PARTE 9 do guia como base." |
+| **Secret encontrado** | "Um secret foi encontrado pelo scanner. Revogue a credencial em [serviço], rode git filter-repo para limpar o histórico e configure pre-commit para prevenir reincidência." |
+| **Sincronizar regras** | "Leia o AGENTS.md e exporte as regras para [Cursor / Copilot / Windsurf], criando o arquivo de destino no formato correto." |
 
 ---
 
@@ -957,6 +1093,9 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 [ ] Commit feito com mensagem descritiva
 [ ] Merge em main com --no-ff
 [ ] Branch deletada
+--- Multi-ferramenta (se aplicável) ---
+[ ] AGENTS.md atualizado com novas regras (se houver)
+[ ] Regras re-exportadas para as ferramentas do time (Cursor, Copilot, etc.)
 ```
 
 ---
@@ -965,11 +1104,11 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 
 | Anti-pattern | Por quê evitar | O que fazer |
 |---|---|---|
-| Codar sem spec | Sem rastreabilidade, sem alinhamento | Sempre criar plan.md + requirements.md + validation.md antes |
-| Spec e código dessincronizados | Futuro analista não sabe o que é real | Atualizar spec sempre que implementação mudar |
+| Codar sem spec | Sem rastreabilidade, sem alinhamento | Sempre criar plan.md + requirements.md + validation.md + security.md antes |
+| Spec e código dessincronizados | Futuro analista não sabe o que é real | Atualizar spec sempre que implementação mudar; registrar decisão em requirements.md |
 | Commit sem changelog | Histórico perdido | Rodar skill changelog antes de todo merge |
 | Branch longa com muitas features | Dificulta revisão e rollback | Uma feature = uma branch = um merge |
-| Roadmap com fases grandes | Feature demora, feedback tardio | Fases devem ser implementáveis em uma sessão |
+| Roadmap com fases grandes | Feature demora, feedback tardio | Fases devem ser implementáveis em uma sessão (máx. 5 grupos no plan.md) |
 | Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre AskUserQuestion ANTES de criar arquivos |
 | Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar SAST/SCA/Secrets localmente antes do commit — CI é rede de segurança, não ponto primário |
 | Feature sem security.md | Riscos não documentados, sem critério de aceite | Todo spec de feature inclui security.md obrigatório |
@@ -977,3 +1116,6 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 | Sem failure modes no spec | Código trata só o caminho feliz | Seção Confiabilidade no requirements.md com cenários de falha |
 | Versões flutuantes de dependências | Supply chain: atualização maliciosa entra sem revisão | Fixar versões no manifesto e commitar o lockfile |
 | Sem property-based testing em escrita concorrente | Race conditions passam despercebidas nos testes unitários | Identificar invariantes e usar biblioteca de property-based testing |
+| Secret encontrado → só remover do código | Secret no histórico git continua exposto | Revogar credencial + git filter-repo + auditar acesso |
+| Regras de código só em um arquivo de ferramenta | Time diverge entre Cursor/Copilot/Claude | AGENTS.md como fonte única, exportar para cada ferramenta |
+| Fluxo completo P→R→E→V→C para todo bugfix | Overhead desnecessário | Usar escala de workflow: QUICK para fixes, LARGE só para sistemas complexos |

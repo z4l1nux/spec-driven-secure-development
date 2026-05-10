@@ -35,10 +35,14 @@ projeto/
 │   ├── mission.md                  ← Por que o projeto existe
 │   ├── tech-stack.md               ← Decisões técnicas e suas razões
 │   ├── roadmap.md                  ← Fases de trabalho em ordem
+│   ├── STATE.md                    ← Memória contínua: contexto atual, decisões, pendências e próximos passos
 │   └── YYYY-MM-DD-nome-feature/    ← Uma pasta por funcionalidade
-│       ├── plan.md                 ← Grupos de tarefas numerados
+│       ├── EXECUTE.md              ← O prompt pronto para o humano colar no chat e iniciar a implementação
+│       ├── plan.md                 ← Fatias verticais (Slices) de tarefas numeradas, classificadas como [AFK] ou [HITL]
 │       ├── requirements.md         ← Escopo, decisões, contexto
-│       ├── validation.md           ← Como saber que está pronto para merge
+│       ├── test-cases.yaml         ← (Opcional) Casos de teste agnósticos: input e output puros
+│       ├── QA_CHECKLIST.md         ← Validações manuais humanas focadas em UX, regressões e edge cases
+│       ├── validation.md           ← Testes automatizados (CI, etc) para saber se está pronto para merge
 │       └── security.md             ← Entry points, riscos, critérios de segurança
 ├── skills/                         ← Skills reutilizáveis (opcionais)
 │   ├── changelog/
@@ -88,10 +92,10 @@ Crie uma "constituição" em um diretório specs:
 - tech-stack.md
 - roadmap.md (fases de trabalho pequenas e independentes)
 
-Importante: você DEVE usar AskUserQuestion, agrupada em 3 perguntas, antes de escrever no disco.
+Importante: você DEVE usar a técnica de Grill (uma pergunta por vez, com sugestão de resposta), antes de escrever no disco.
 ```
 
-**O que o agente vai perguntar (3 perguntas agrupadas):**
+**O que o agente vai perguntar na Sessão de Grill (uma por vez):**
 1. **Missão** — tom, propósito, o que o produto faz
 2. **Stack** — linguagem, framework, banco de dados
 3. **Roadmap** — como estruturar as fases (incremental, vertical, etc.)
@@ -150,19 +154,22 @@ Antes de implementar qualquer fase, crie o spec da funcionalidade.
 ```
 Encontre a próxima fase em specs/roadmap.md e crie uma branch.
 Crie um novo diretório YYYY-MM-DD-nome-da-funcionalidade em specs com:
-- plan.md — grupos de tarefas numerados
+- EXECUTE.md — o prompt final para eu copiar e colar para iniciar a implementação
+- plan.md — fatias verticais de tarefas numeradas, marcadas com [AFK] ou [HITL]
 - requirements.md — escopo, decisões, contexto
-- validation.md — como saber se pode ser mergeado
+- test-cases.yaml — (se houver regras de negócio) pares de input/output agnósticos
+- QA_CHECKLIST.md — validações manuais humanas (UX, edge cases complexos)
+- validation.md — validações automatizadas (CI, testes)
 - security.md — entry points, riscos, critérios de segurança
 
 Consulte specs/mission.md e specs/tech-stack.md para orientação.
-Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
+Importante: use a técnica de Grill (uma pergunta por vez com sugestão de resposta) antes de escrever no disco.
 ```
 
 **O que o agente faz:**
 1. Lê `specs/roadmap.md`, identifica a primeira fase com itens `[ ]`
 2. Cria branch: `git checkout -b YYYY-MM-DD-nome-kebab`
-3. Pergunta 3 perguntas antes de escrever qualquer arquivo:
+3. Inicia o Grill, fazendo uma pergunta por vez (com sugestão) sobre:
 
 | Cabeçalho | Foco |
 |---|---|
@@ -176,26 +183,21 @@ Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
 ```markdown
 # Plan — Nome da Feature
 
-## Group 1 — Banco de Dados
+## Slice 1: Estrutura Básica [AFK]
 1. Criar migration SQL
-2. Criar seed data
+2. Endpoint GET /rota simples
+3. Teste GET /rota → status 200
 
-## Group 2 — Rotas
-3. GET /rota → render página
-4. POST /rota → persistir dados
-
-## Group 3 — Componentes UI
-5. Criar componente Lista
-6. Criar componente Form
-
-## Group 4 — Testes
-7. Teste GET /rota → status 200
-8. Teste POST /rota → redirect ou confirmação
-
-## Group 5 — Verificação
-9. [verificação de tipos] → 0 erros
-10. [suite de testes] → todos passam
+## Slice 2: Criação pelo Usuário [HITL]
+4. Endpoint POST /rota com validação
+5. Teste POST /rota
+6. Criar componente Lista e Formulário
+7. Revisão humana da UX do formulário
 ```
+
+> **Nota sobre Tags:** 
+> - `[AFK] (Away From Keyboard)`: O agente pode implementar, rodar testes e seguir em frente sem perguntar.
+> - `[HITL] (Human-In-The-Loop)`: O agente implementa, mas DEVE parar e pedir validação humana antes de prosseguir (ex: decisões de arquitetura, UX).
 
 `specs/YYYY-MM-DD-nome/requirements.md`:
 ```markdown
@@ -233,6 +235,17 @@ Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
 Tom, stack, padrões existentes a seguir.
 ```
 
+`specs/YYYY-MM-DD-nome/QA_CHECKLIST.md`:
+```markdown
+# QA Checklist — Nome
+
+## Validação Humana
+- [ ] A experiência de erro no formulário é clara para o usuário?
+- [ ] A animação de loading está fluida?
+- [ ] O texto está alinhado com o tom da marca?
+- [ ] Edge cases de usabilidade (ex: clique duplo no botão) foram mitigados visualmente?
+```
+
 `specs/YYYY-MM-DD-nome/validation.md`:
 ```markdown
 # Validation — Nome
@@ -246,16 +259,11 @@ Tom, stack, padrões existentes a seguir.
 `[suite de testes]` → exit 0
 Deve cobrir: [lista de rotas/comportamentos]
 
-### 3. Verificação manual
-- [ ] Página X carrega em http://localhost:3000/x
-- [ ] Formulário Y envia e persiste
-- [ ] Layout responsivo em mobile (≤ 640px)
-
-### 4. Performance
+### 3. Performance
 - [ ] Rota X não ultrapassa [N] queries por requisição
 - [ ] Sem alocações sem TTL identificadas no profiling local
 
-### 5. Segurança (shift-left)
+### 4. Segurança (shift-left)
 - [ ] `semgrep --config auto` → 0 HIGH/CRITICAL
 - [ ] `trivy fs .` → 0 HIGH/CRITICAL
 - [ ] `trufflehog filesystem .` → 0 secrets expostos
@@ -297,7 +305,7 @@ Com o spec pronto, o agente implementa seguindo os grupos do `plan.md`.
 Implemente os grupos de tarefas do plan.md.
 ```
 
-O agente executa os grupos em ordem. Cada grupo é uma unidade coesa (ex: banco → rotas → UI → testes).
+O agente executa os slices em ordem. Cada slice é uma fatia vertical coesa que entrega valor fim a fim (ex: banco + rota + testes para GET). Quando encontra a tag `[HITL]`, ele deve parar e pedir sua aprovação.
 
 ---
 
@@ -1033,6 +1041,92 @@ adaptado para o formato que [ferramenta] espera.
 
 ---
 
+## PARTE 11 — O Prompt "Arquiteto de Produto" (Para Features Complexas)
+
+Quando a funcionalidade a ser construída for complexa e você quiser fazer um "Bootstrap" unificado (ao invés de seguir os passos 1 e 2 manualmente), utilize o **Master Prompt** abaixo com seu agente. Ele já embute as práticas de Grill, Slices Verticais e Separação Humano/IA:
+
+**Prompt:**
+```text
+Você é um Engenheiro de Software Sênior operando em modo Spec-Driven Secure Development (SDSD).
+Sua missão é atuar como Arquiteto de Produto e criar os arquivos de especificação ANTES de qualquer implementação.
+
+Regras absolutas:
+1. NÃO escreva código de produção nesta etapa.
+2. Primeiro elimine ambiguidades (Grill).
+3. Depois gere os arquivos de spec.
+4. Pare e aguarde minha aprovação para iniciar a implementação.
+
+## Etapa 1: A Sessão de "Grill" (Clarificação)
+Faça perguntas sobre a feature abaixo.
+- Faça UMA pergunta por vez.
+- Para cada pergunta, proponha uma resposta recomendada baseada no contexto e nas melhores práticas.
+- Resolva ambiguidades sobre UX, APIs, Segurança (entry points) e Edge Cases.
+- Só avance para a geração de arquivos quando eu disser que o escopo está claro.
+
+[INSIRA A DESCRIÇÃO DA FEATURE AQUI]
+
+## Etapa 2: Geração de Arquivos
+Após o Grill, gere/atualize os arquivos em `specs/YYYY-MM-DD-nome-feature/`:
+1. `EXECUTE.md`: O prompt exato que eu (humano) vou usar para pedir a você que codifique esta funcionalidade.
+2. `test-cases.yaml`: (Se houver lógica de negócio complexa) Lista de inputs e outputs matemáticos esperados, agnósticos de linguagem.
+3. `requirements.md`: Contexto, Modelagem de dados, Requisitos não-funcionais (Failure modes, Concorrência) e Fora de Escopo.
+4. `security.md`: Entry points, vetores de ataque, requisitos de validação.
+5. `plan.md`: Dividido em Fatias Verticais (Vertical Slices) independentes. Cada fatia deve conter DB, Backend e UI, e ser classificada como [AFK] (agente faz sozinho) ou [HITL] (requer revisão humana a cada passo).
+6. `QA_CHECKLIST.md`: Checklist focado apenas na validação manual humana (UX, edge cases complexos).
+
+## Etapa 3: Resumo Executivo
+Ao finalizar a geração, me entregue nesta resposta:
+- As 3 principais premissas assumidas.
+- Os 3 maiores riscos técnicos.
+- O que o agente fará sozinho (AFK) e onde precisará de mim (HITL).
+```
+
+---
+
+## PARTE 12 — Uso do STATE.md (Memória entre Sessões)
+
+Quando você for pausar o trabalho para continuar no dia seguinte ou quando o limite de contexto do agente for atingido, salve o contexto para não perder as decisões tácitas:
+
+**Prompt ao encerrar:**
+```
+Atualize o arquivo specs/STATE.md com o contexto atual: quais decisões foram tomadas hoje, o que está pendente, bloqueios encontrados e quais devem ser os próximos passos exatos.
+```
+
+**Prompt ao retomar:**
+```
+Leia o specs/STATE.md para recuperar o contexto do nosso trabalho e retome a execução a partir dos próximos passos definidos.
+```
+
+---
+
+## PARTE 13 — Lógica Pura e Código Descartável (O Padrão "whenwords")
+
+Inspirado no conceito de "Bibliotecas Sem Código", o SDSD eleva a especificação ao nível de código-fonte quando lidamos com lógicas de negócio pesadas, cálculos ou formatações complexas.
+
+**O Princípio:** O código é volátil e descartável; a Spec é imutável.
+
+### 1. Testes Declarativos Agnósticos (`test-cases.yaml`)
+Quando uma feature não for apenas um CRUD, mas envolver transformações de dados ou regras de negócio:
+- A pasta da feature DEVE conter um `test-cases.yaml`.
+- O arquivo deve ter apenas arrays de `input` e `expected_output`.
+- Nenhuma referência a frameworks (Jest, PyTest, etc) deve existir na spec.
+
+### 2. O Spec "Executável" (`EXECUTE.md`)
+O arquivo `EXECUTE.md` (gerado junto com os outros arquivos da feature) é o "botão de play". Ele empacota as instruções para o agente.
+
+**Conteúdo típico de um EXECUTE.md:**
+```markdown
+Implemente a funcionalidade lendo os arquivos desta pasta:
+1. Leia `requirements.md` e `security.md` para entender o comportamento.
+2. Leia `test-cases.yaml` e gere uma suíte de testes na linguagem do projeto.
+3. Implemente a lógica em fatias conforme o `plan.md`.
+4. Rode a suíte de testes em loop até que TODOS os casos do `test-cases.yaml` passem.
+5. Pare nas tarefas [HITL] e peça minha aprovação.
+```
+Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta rodar o `EXECUTE.md` novamente — a especificação gerará código novo automaticamente.
+
+---
+
 ## Referência Rápida de Prompts
 
 | Situação | Prompt |
@@ -1066,11 +1160,14 @@ adaptado para o formato que [ferramenta] espera.
 
 ```
 [ ] Branch criada com nome YYYY-MM-DD-nome-kebab
-[ ] specs/YYYY-MM-DD-nome/plan.md criado (grupos de tarefas)
+[ ] specs/YYYY-MM-DD-nome/EXECUTE.md criado (prompt de execução pronto)
+[ ] specs/YYYY-MM-DD-nome/plan.md criado (fatias verticais com tags [AFK] e [HITL])
 [ ] specs/YYYY-MM-DD-nome/requirements.md criado (escopo, decisões, contexto, NFRs)
-[ ] specs/YYYY-MM-DD-nome/validation.md criado (definition of done)
+[ ] specs/YYYY-MM-DD-nome/test-cases.yaml criado (para lógicas complexas agnósticas)
+[ ] specs/YYYY-MM-DD-nome/QA_CHECKLIST.md criado (validação humana de UX e regressões)
+[ ] specs/YYYY-MM-DD-nome/validation.md criado (definition of done automatizado)
 [ ] specs/YYYY-MM-DD-nome/security.md criado (entry points, riscos, requisitos)
-[ ] Implementação completa (todos os grupos do plan.md)
+[ ] Implementação completa (todas as fatias verticais do plan.md testadas)
 [ ] [verificação de tipos] → exit 0
 [ ] [suite de testes] → todos passam
 [ ] Verificação manual no browser

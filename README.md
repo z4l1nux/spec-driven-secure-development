@@ -10,40 +10,38 @@ O princípio central da metodologia é a inversão de controle tradicional: **A 
 
 ## 💡 Por que usar?
 
-- **Fim da "Caixa Preta" da IA:** O código gerado deixa de ser um "código alienígena". Você sabe exatamente *por que* algo foi construído, pois a decisão e os requisitos arquiteturais estão documentados nas specs.
-- **Lógica e Testes Agnósticos:** Para lógica de negócio complexa, nós adotamos a filosofia de "Bibliotecas Sem Código". O comportamento do sistema é amarrado por testes puros de input/output (`test-cases.yaml`). A IA itera o código da linguagem escolhida até a matemática fechar.
-- **Segurança Shift-Left Nativa:** Modelagem de ameaças e tratamento de exceções (*Failure modes*) não são pensados após a codificação, mas planejados e documentados na base da *feature*.
-- **Orquestração Híbrida Inteligente:** A quebra de tarefas classifica o esforço de implementação em duas vias de responsabilidade — o que a IA executa sozinha sem supervisão (`[AFK]`) e o que necessita de interrupção com revisão humana explícita a cada passo (`[HITL]`).
-- **Redução da Carga Cognitiva e Repetição:** As próprias especificações geram um "prompt encapsulado" (`EXECUTE.md`), restando ao humano apenas dar o play no Agente.
+- **Fim da "Caixa Preta" da IA:** O código gerado deixa de ser "código alienígena". Você sabe exatamente *por que* algo foi construído, porque decisão e requisitos estão documentados nas specs.
+- **Princípios Invioláveis em Primeiro Lugar:** Um arquivo `principles.md` na raiz da constituição declara o que nunca pode ser violado (segurança, compliance, UX). Toda feature é validada contra ele.
+- **Lógica e Testes Agnósticos:** Para lógica de negócio complexa, "Bibliotecas Sem Código" — o comportamento é amarrado por `test-cases.yaml` (input/output puros) ou `evals.yaml` (para features de IA com saídas não-determinísticas). A IA itera até a matemática fechar.
+- **Segurança Shift-Left em Dois Momentos:** Pre-commit local (segundos, ponto primário) + CI (minutos, rede de segurança). Modelagem de ameaças e *failure modes* na base da feature, nunca depois.
+- **Orquestração Híbrida com Subagents Versionados:** Tarefas classificadas como `[AFK]` (autônomo) ou `[HITL]` (revisão humana obrigatória). Perfis especializados (`security-auditor`, `code-reviewer`, etc.) ficam em `.claude/agents/` versionados com o projeto.
+- **Memória Persistente entre Sessões:** `STATE.md` preserva contexto, decisões e próximo passo granular. ADRs em `specs/adr/` registram decisões irreversíveis.
+- **Multi-Ferramenta por Padrão:** `AGENTS.md` é a fonte única — exportável para Claude Code, Cursor, Copilot, Windsurf e Codex sem divergência.
+- **Redução da Carga Cognitiva:** O `EXECUTE.md` gerado é o "botão de play" — copy-paste no chat e o agente executa.
 
 ## 🚀 Como Funciona o Fluxo (Resumo)
 
-O workflow completo, incluindo a resolução de dívida técnica em projetos legados, é destrinchado no [Guia Completo de SDSD](GUIA-SDSD.md). Abaixo estão as etapas principais:
+Toda tarefa segue o ciclo **P → R → E → V → C** (Planejar → Revisar → Executar → Validar → Confirmar). Bugfixes pequenos podem pular etapas; features complexas usam o ciclo completo. A escala detalhada (QUICK / SMALL / MEDIUM / LARGE) está no [guia](GUIA-SDSD.md).
 
-1. **A Constituição do Projeto:**
-   O projeto se inicia estabelecendo a fundação da engenharia:
-   - `mission.md`: Qual é o problema a ser resolvido e o que define sucesso.
-   - `tech-stack.md`: As escolhas de arquitetura, frameworks e esteira de verificação (SAST, SCA, Secrets).
-   - `roadmap.md`: O agrupamento das entregas em fases independentes.
-   - `STATE.md`: Um log de contexto ativo para manter a memória persistente dos agentes entre as sessões.
+**P — Planejar (Constituição + Feature Spec)**
+A constituição do projeto vive em `specs/`: `mission.md`, `principles.md` (restrições invioláveis de segurança/UX/compliance), `tech-stack.md` (incluindo SAST, SCA, Secrets, pre-commit) e `roadmap.md`. Para cada feature, uma sessão de *Grill* (uma pergunta por vez) elimina ambiguidades antes de qualquer arquivo ser escrito.
 
-2. **O Grill de Especificação:**
-   O humano não perde horas montando especificações enormes. Aciona-se um *Master Prompt* para que o Agente IA conduza uma rigorosa entrevista ("Sessão de Grill"). Com perguntas granulares, resolvem-se ambiguidades arquitetônicas.
+**R — Revisar (gerar specs executáveis)**
+O agente cria a pasta da feature com: `EXECUTE.md` (prompt-botão de play), `plan.md` (fatias verticais marcadas como `[AFK]` autônomo ou `[HITL]` com revisão humana), `requirements.md` (escopo + NFRs), `test-cases.yaml`/`evals.yaml`, `security.md`, `validation.md` e `QA_CHECKLIST.md`.
 
-3. **Geração das Especificações Executáveis:**
-   O Agente cria a pasta com o artefato da *Feature* contendo `requirements.md`, fatias de execução verticalizadas (`plan.md`), checklist de UX focado no avaliador humano (`QA_CHECKLIST.md`), vetores de ataque (`security.md`) e os casos de teste.
+**E — Executar (implementação a partir do EXECUTE.md)**
+Você cola o `EXECUTE.md` no chat do agente. Ele implementa fatia por fatia, parando nos `[HITL]`. Pre-commit local roda SAST/SCA/Secrets antes de cada commit — o CI é rede de segurança, não ponto primário.
 
-4. **Implementação Autônoma via "Botão de Play":**
-   Junto aos artefatos, um arquivo `EXECUTE.md` é gerado contendo o prompt definitivo daquela *feature*. Você insere no chat do seu Agente e ele consome a documentação técnica para construir os testes, banco e interface no repositório final.
+**V — Validar (gates antes do merge)**
+Type check, testes, scans de segurança, checklist humano de UX e revisão multi-subagente (`code-reviewer`, `security-auditor`, `performance-optimizer` em paralelo) garantem que nada passa batido.
 
-5. **Acompanhamento Tático:**
-   Durante o *loop* de código, o humano verifica a qualidade intervindo nas fatias delimitadas e acionando as auditorias de dependência. Ao fim, um changelog rastreável documenta o final do ciclo de trabalho.
+**C — Confirmar (merge + memória)**
+Skill `changelog` atualiza o `CHANGELOG.md`. Decisões irreversíveis viram um ADR em `specs/adr/`. `STATE.md` preserva o contexto entre sessões para o próximo dia.
 
-## 📖 Documentação Completa
+## 📖 Documentação e Templates
 
-Para aprofundar na estruturação de prompts, fluxos de prevenção contra problemas de arquitetura comuns gerados por agentes (N+1, Memory Leaks e Race Conditions) e setup de testes, consulte o guia oficial:
-
-👉 **[LEIA O GUIA TÉCNICO COMPLETO AQUI (GUIA-SDSD.md)](GUIA-SDSD.md)**
+- 👉 **[Guia técnico completo (GUIA-SDSD.md)](GUIA-SDSD.md)** — fluxo detalhado, prompts, prevenção de N+1/race conditions/memory leaks, CI/CD
+- 📁 **[Templates prontos (`templates/`)](templates/)** — `principles.md`, `AGENTS.md`, `.pre-commit-config.yaml` e subagent `security-auditor` para copiar direto no seu projeto
 
 ---
 *"Escreva boas especificações. Deixe a IA cuidar da digitação."*

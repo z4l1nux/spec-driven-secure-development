@@ -1,7 +1,8 @@
 # Guia Técnico: Spec-Driven Secure Development (SDSD)
 
-> Referência hands-on para qualquer analista do time.  
+> Referência hands-on para qualquer analista do time.
 > Cobre projetos **novos** e projetos **em andamento (legado)**.
+> Compatível com Claude Code, Cursor, Copilot, Windsurf e Codex.
 
 ---
 
@@ -9,7 +10,9 @@
 
 Spec-Driven Secure Development é um fluxo de trabalho onde **toda funcionalidade começa com especificações escritas antes do código**. O agente de IA trabalha a partir dos specs — não de prompts soltos. Isso garante rastreabilidade, alinhamento entre stakeholders e código revisável.
 
-**Princípio central:** O spec é a fonte da verdade. O código implementa o spec. O changelog registra o histórico.
+**Princípio central:** o spec é a fonte da verdade. O código implementa o spec. O changelog registra o histórico.
+
+**Inversão de controle:** a especificação é o ativo primário; o código é um subproduto (muitas vezes descartável).
 
 ---
 
@@ -17,8 +20,8 @@ Spec-Driven Secure Development é um fluxo de trabalho onde **toda funcionalidad
 
 Se você é novo no projeto ou no fluxo SDSD:
 
-1. **Instale o Claude Code** (ou a ferramenta de agente que o time usa)
-2. **Leia nesta ordem:** `specs/mission.md` → `specs/tech-stack.md` → `specs/roadmap.md`
+1. **Instale o agente** que o time usa (Claude Code, Cursor, Copilot, etc.)
+2. **Leia nesta ordem:** `specs/mission.md` → `specs/principles.md` → `specs/tech-stack.md` → `specs/roadmap.md`
 3. **Entenda o fluxo:** toda tarefa segue o ciclo P→E→V (ou completo P→R→E→V→C para features grandes — veja a tabela de escala abaixo)
 4. **Nunca escreva código sem spec.** Se não existe spec, crie antes de codar.
 5. **Nunca mude código sem atualizar o spec.** Eles andam juntos, sempre.
@@ -33,23 +36,34 @@ Se você é novo no projeto ou no fluxo SDSD:
 projeto/
 ├── specs/                          ← Constituição + specs de funcionalidades
 │   ├── mission.md                  ← Por que o projeto existe
+│   ├── principles.md               ← Restrições invioláveis (security, compliance, UX)
 │   ├── tech-stack.md               ← Decisões técnicas e suas razões
 │   ├── roadmap.md                  ← Fases de trabalho em ordem
-│   ├── STATE.md                    ← Memória contínua: contexto atual, decisões, pendências e próximos passos
+│   ├── STATE.md                    ← Memória contínua entre sessões do agente
+│   ├── adr/                        ← Architecture Decision Records (decisões irreversíveis pós-merge)
+│   │   └── 0001-titulo.md
 │   └── YYYY-MM-DD-nome-feature/    ← Uma pasta por funcionalidade
-│       ├── EXECUTE.md              ← O prompt pronto para o humano colar no chat e iniciar a implementação
-│       ├── plan.md                 ← Fatias verticais (Slices) de tarefas numeradas, classificadas como [AFK] ou [HITL]
-│       ├── requirements.md         ← Escopo, decisões, contexto
-│       ├── test-cases.yaml         ← (Opcional) Casos de teste agnósticos: input e output puros
-│       ├── QA_CHECKLIST.md         ← Validações manuais humanas focadas em UX, regressões e edge cases
-│       ├── validation.md           ← Testes automatizados (CI, etc) para saber se está pronto para merge
+│       ├── EXECUTE.md              ← Prompt pronto para colar no chat e iniciar a implementação
+│       ├── plan.md                 ← Fatias verticais (Slices) numeradas, classificadas como [AFK] ou [HITL]
+│       ├── requirements.md         ← Escopo, decisões, contexto, NFRs
+│       ├── test-cases.yaml         ← Pares input/output agnósticos (obrigatório p/ regra de negócio; opcional p/ CRUD puro)
+│       ├── evals.yaml              ← (Apenas features de IA/LLM/RAG) Casos de avaliação não-determinísticos
+│       ├── QA_CHECKLIST.md         ← Validações manuais focadas em UX, regressões e edge cases
+│       ├── validation.md           ← Definition of Done automatizado (CI, type check, scans)
 │       └── security.md             ← Entry points, riscos, critérios de segurança
-├── skills/                         ← Skills reutilizáveis (opcionais)
+├── .claude/
+│   ├── agents/                     ← Subagents especializados (arquivos .md por perfil)
+│   ├── settings.json               ← Hooks, permissões, env vars
+│   └── commands/                   ← Slash commands customizados (opcional)
+├── skills/                         ← Skills reutilizáveis (progressive disclosure)
 │   ├── changelog/
-│   │   ├── SKILL.md
-│   │   └── scripts/changelog.py
+│   │   ├── SKILL.md                ← Frontmatter + descrição (sempre carregado)
+│   │   └── scripts/changelog.py    ← Carregado só quando a skill é invocada
 │   └── feature-spec/
 │       └── SKILL.md
+├── AGENTS.md                       ← Fonte única das regras de código (exportada para cada ferramenta)
+├── CLAUDE.md                       ← Espelho do AGENTS.md no formato do Claude Code
+├── .pre-commit-config.yaml         ← Hooks locais (semgrep/trivy/trufflehog/lint)
 ├── CHANGELOG.md                    ← Gerado pela skill changelog
 └── src/                            ← Código
 ```
@@ -60,21 +74,23 @@ projeto/
 
 Nem toda tarefa precisa do fluxo completo. Use a tabela abaixo para decidir:
 
-| Escala | Fases | Quando usar |
-|---|---|---|
-| **QUICK** | E → V | Bugfix, ajuste de texto, correção visual pequena |
-| **SMALL** | P → E → V | Feature simples, nova rota sem lógica complexa |
-| **MEDIUM** | P → R → E → V | Feature regular, nova entidade, integração externa |
-| **LARGE** | P → R → E → V → C | Sistema complexo, múltiplos stakeholders, requisito de compliance |
+| Escala | Fases | Artefatos mínimos | Quando usar |
+|---|---|---|---|
+| **QUICK** | E → V | nenhum (commit + changelog) | Bugfix, ajuste de texto, correção visual pequena |
+| **SMALL** | P → E → V | `plan.md` + `validation.md` | Feature simples, nova rota sem lógica complexa |
+| **MEDIUM** | P → R → E → V | + `requirements.md` + `security.md` | Feature regular, nova entidade, integração externa |
+| **LARGE** | P → R → E → V → C | + `test-cases.yaml`/`evals.yaml` + `QA_CHECKLIST.md` + ADR | Sistema complexo, múltiplos stakeholders, compliance |
 
 **Fases:**
-- **P (Planning):** Escrever specs (plan.md, requirements.md, validation.md, security.md) antes de qualquer código
-- **R (Review):** Validar arquitetura, decisões técnicas e riscos antes de implementar
-- **E (Execution):** Implementar seguindo os grupos do plan.md
-- **V (Validation):** Rodar testes, scans de segurança, verificação manual
-- **C (Confirmation):** Atualizar changelog, fazer merge, deletar branch, comunicar stakeholders
+- **P (Planning):** escrever specs antes de qualquer código
+- **R (Review):** validar arquitetura, decisões e riscos antes de implementar
+- **E (Execution):** implementar seguindo as fatias do `plan.md`
+- **V (Validation):** rodar testes, scans de segurança, verificação manual
+- **C (Confirmation):** atualizar changelog, registrar ADR (se aplicável), merge, comunicar
 
 > **Regra prática:** em caso de dúvida, use MEDIUM. O custo de escrever um spec é menor que o de refatorar código sem rastreabilidade.
+
+> **Atalho no Claude Code:** o **Plan Mode** (`Shift+Tab` para alternar, ou `/plan`) já força o agente a planejar antes de tocar em arquivo — use-o como rede de segurança da fase P.
 
 ---
 
@@ -82,23 +98,26 @@ Nem toda tarefa precisa do fluxo completo. Use a tabela abaixo para decidir:
 
 ### Passo 1: Criar a Constituição
 
-A constituição são os três arquivos base que todo projeto SDSD precisa antes de qualquer código.
+A constituição são os **quatro arquivos base** que todo projeto SDSD precisa antes de qualquer código.
 
 **Prompt para o agente:**
 ```
 Estamos construindo [nome do projeto]. Consulte o README.md para entrada das partes interessadas.
-Crie uma "constituição" em um diretório specs:
-- mission.md
-- tech-stack.md
-- roadmap.md (fases de trabalho pequenas e independentes)
+Crie uma "constituição" em um diretório specs/:
+- mission.md         (por que existimos)
+- principles.md      (restrições invioláveis: security, compliance, UX)
+- tech-stack.md      (linguagem, framework, banco, esteira de verificação)
+- roadmap.md         (fases pequenas e independentes)
 
-Importante: você DEVE usar a técnica de Grill (uma pergunta por vez, com sugestão de resposta), antes de escrever no disco.
+Importante: use a técnica de Grill (uma pergunta por vez, com sugestão de resposta) antes de escrever no disco.
+No Claude Code, prefira ativar o Plan Mode (Shift+Tab) durante o Grill.
 ```
 
 **O que o agente vai perguntar na Sessão de Grill (uma por vez):**
 1. **Missão** — tom, propósito, o que o produto faz
-2. **Stack** — linguagem, framework, banco de dados
-3. **Roadmap** — como estruturar as fases (incremental, vertical, etc.)
+2. **Princípios** — regras que nunca devem ser violadas (ex: "todo dado pessoal criptografado em repouso")
+3. **Stack** — linguagem, framework, banco, esteira de segurança
+4. **Roadmap** — como estruturar as fases (incremental, vertical, etc.)
 
 **Resultado esperado:**
 
@@ -111,7 +130,32 @@ Importante: você DEVE usar a técnica de Grill (uma pergunta por vez, com suges
 ## Target Audience
 [Para quem]
 ## What Success Looks Like
-[Critério de sucesso]
+[Critério de sucesso mensurável]
+```
+
+`specs/principles.md`:
+```markdown
+# Princípios Invioláveis
+
+> Restrições que se aplicam a TODA feature, sem exceção. Mudanças aqui exigem ADR.
+
+## Segurança
+- Nenhum secret no código ou em logs
+- Toda rota é autenticada por padrão; rotas públicas exigem decisão explícita no requirements.md
+- Inputs sempre validados server-side; nunca confiar no cliente
+
+## Privacidade / Compliance
+- [ex: dados pessoais criptografados em repouso e em trânsito]
+- [ex: consentimento explícito antes de coletar dado sensível]
+
+## Qualidade
+- Specs e código são commitados juntos — nunca um sem o outro
+- Toda feature tem failure modes documentados antes de ser implementada
+- Versões de dependências fixas; lockfile commitado
+
+## UX
+- [ex: feedback visível em ações > 200ms]
+- [ex: mensagens de erro acionáveis, nunca códigos crus]
 ```
 
 `specs/tech-stack.md`:
@@ -127,10 +171,11 @@ Importante: você DEVE usar a técnica de Grill (uma pergunta por vez, com suges
 - [Framework de testes] — [característica principal]
 ## CSS / UI
 [Abordagem: mobile-first, design system, etc.]
-## Security
-- SAST: [ferramenta escolhida] — comando local: `[comando]`
-- SCA: [ferramenta escolhida] — comando local: `[comando]`
-- Secrets: [ferramenta escolhida] — comando local: `[comando]`
+## Security (esteira escolhida — ver PARTE 4 para alternativas)
+- SAST: [ferramenta] — comando local: `[comando]`
+- SCA: [ferramenta] — comando local: `[comando]`
+- Secrets: [ferramenta] — comando local: `[comando]`
+- Pre-commit: [framework] — config: `.pre-commit-config.yaml`
 ```
 
 `specs/roadmap.md`:
@@ -142,7 +187,7 @@ Importante: você DEVE usar a técnica de Grill (uma pergunta por vez, com suges
 ## Phase 2 — ...
 ```
 
-> **Regra:** cada fase do roadmap deve ser implementável em uma sessão focada e independentemente mergeável. Como guia de granularidade: máximo de 5 grupos no `plan.md`, máximo de 3 entidades novas ou 5 rotas por fase. Se ultrapassar, divida.
+> **Regra de granularidade:** cada fase do roadmap deve ser implementável em uma sessão focada e independentemente mergeável. Máximo de 5 grupos no `plan.md`, máximo de 3 entidades novas ou 5 rotas por fase. Se ultrapassar, divida.
 
 ---
 
@@ -154,16 +199,17 @@ Antes de implementar qualquer fase, crie o spec da funcionalidade.
 ```
 Encontre a próxima fase em specs/roadmap.md e crie uma branch.
 Crie um novo diretório YYYY-MM-DD-nome-da-funcionalidade em specs com:
-- EXECUTE.md — o prompt final para eu copiar e colar para iniciar a implementação
-- plan.md — fatias verticais de tarefas numeradas, marcadas com [AFK] ou [HITL]
-- requirements.md — escopo, decisões, contexto
-- test-cases.yaml — (se houver regras de negócio) pares de input/output agnósticos
-- QA_CHECKLIST.md — validações manuais humanas (UX, edge cases complexos)
-- validation.md — validações automatizadas (CI, testes)
-- security.md — entry points, riscos, critérios de segurança
+- EXECUTE.md       — o prompt final para eu copiar e colar para iniciar a implementação
+- plan.md          — fatias verticais de tarefas numeradas, marcadas com [AFK] ou [HITL]
+- requirements.md  — escopo, decisões, contexto, NFRs
+- test-cases.yaml  — (obrigatório p/ regra de negócio; opcional p/ CRUD puro) pares input/output
+- evals.yaml       — (apenas features de IA/LLM/RAG) casos de avaliação não-determinísticos
+- QA_CHECKLIST.md  — validações manuais humanas (UX, edge cases complexos)
+- validation.md    — definition of done automatizada (CI, testes, scans)
+- security.md      — entry points, riscos, critérios de segurança
 
-Consulte specs/mission.md e specs/tech-stack.md para orientação.
-Importante: use a técnica de Grill (uma pergunta por vez com sugestão de resposta) antes de escrever no disco.
+Consulte specs/mission.md, specs/principles.md e specs/tech-stack.md para orientação.
+Use a técnica de Grill (uma pergunta por vez com sugestão de resposta) ANTES de escrever no disco.
 ```
 
 **O que o agente faz:**
@@ -195,9 +241,9 @@ Importante: use a técnica de Grill (uma pergunta por vez com sugestão de respo
 7. Revisão humana da UX do formulário
 ```
 
-> **Nota sobre Tags:** 
-> - `[AFK] (Away From Keyboard)`: O agente pode implementar, rodar testes e seguir em frente sem perguntar.
-> - `[HITL] (Human-In-The-Loop)`: O agente implementa, mas DEVE parar e pedir validação humana antes de prosseguir (ex: decisões de arquitetura, UX).
+> **Tags:**
+> - `[AFK] (Away From Keyboard)`: o agente pode implementar, rodar testes e seguir em frente sem perguntar.
+> - `[HITL] (Human-In-The-Loop)`: o agente implementa, mas DEVE parar e pedir validação humana antes de prosseguir (ex: decisões de arquitetura, UX).
 
 `specs/YYYY-MM-DD-nome/requirements.md`:
 ```markdown
@@ -223,13 +269,14 @@ Importante: use a técnica de Grill (uma pergunta por vez com sugestão de respo
 - Budget de queries: esta rota não deve exceder [N] queries por requisição
 - [Tempo de resposta esperado, se relevante]
 
-### Confiabilidade
-- Failure modes identificados: [ex: o que acontece se o banco cair?]
-- A feature deve ser resiliente a: [ex: timeout externo, dado ausente]
+### Confiabilidade (Failure Modes)
+- [ex: banco fora → 503 com mensagem clara, não 500 cru]
+- [ex: timeout externo → fallback para cache; sem fallback → erro acionável]
+- [ex: dado ausente → 404, não 500]
 
 ### Concorrência
 - Risco de race condition: [Sim / Não / Baixo]
-- Se Sim: [descrever o cenário e a mitigação, ex: transaction, lock, idempotency key]
+- Se Sim: [cenário e mitigação — transaction, lock, idempotency key]
 
 ## Context
 Tom, stack, padrões existentes a seguir.
@@ -238,6 +285,8 @@ Tom, stack, padrões existentes a seguir.
 `specs/YYYY-MM-DD-nome/QA_CHECKLIST.md`:
 ```markdown
 # QA Checklist — Nome
+
+> Apenas validações que **só um humano** consegue julgar. O que pode virar teste automatizado pertence ao validation.md.
 
 ## Validação Humana
 - [ ] A experiência de erro no formulário é clara para o usuário?
@@ -249,6 +298,8 @@ Tom, stack, padrões existentes a seguir.
 `specs/YYYY-MM-DD-nome/validation.md`:
 ```markdown
 # Validation — Nome
+
+> Apenas critérios **automatizáveis** (CI, testes, scans). Validação humana subjetiva pertence ao QA_CHECKLIST.md.
 
 ## Definition of Done
 
@@ -281,6 +332,7 @@ Deve cobrir: [lista de rotas/comportamentos]
 - [ ] Dados sensíveis expostos em logs ou resposta
 - [ ] Input não validado no servidor
 - [ ] Secrets no código ou variáveis de ambiente
+- [ ] Quebra de algum item de specs/principles.md
 
 ## Requisitos de Segurança
 - [ ] Todos os inputs validados server-side
@@ -294,18 +346,33 @@ Deve cobrir: [lista de rotas/comportamentos]
 - [ ] trufflehog → 0 findings
 ```
 
+`specs/YYYY-MM-DD-nome/EXECUTE.md`:
+```markdown
+# EXECUTE — Nome
+
+Implemente a funcionalidade lendo os arquivos desta pasta:
+1. Leia `requirements.md`, `principles.md` (raiz) e `security.md` para entender o comportamento esperado.
+2. Se houver `test-cases.yaml`: gere a suíte de testes na linguagem do projeto a partir dele.
+3. Se houver `evals.yaml`: gere o harness de avaliação correspondente.
+4. Implemente em fatias conforme o `plan.md`. Em cada `[HITL]`, pare e peça aprovação.
+5. Rode os scans locais (PARTE 4) antes de cada commit.
+6. Ao final, valide o `validation.md` inteiro e me apresente o `QA_CHECKLIST.md` para revisão.
+```
+
 ---
 
 ### Passo 3: Implementar
 
-Com o spec pronto, o agente implementa seguindo os grupos do `plan.md`.
+Com o spec pronto, o agente implementa seguindo os slices do `plan.md`.
 
 **Prompt para o agente:**
 ```
-Implemente os grupos de tarefas do plan.md.
+Execute o EXECUTE.md desta feature.
 ```
 
-O agente executa os slices em ordem. Cada slice é uma fatia vertical coesa que entrega valor fim a fim (ex: banco + rota + testes para GET). Quando encontra a tag `[HITL]`, ele deve parar e pedir sua aprovação.
+O agente executa os slices em ordem. Cada slice é uma fatia vertical coesa que entrega valor fim a fim (ex: banco + rota + testes para GET). Ao encontrar `[HITL]`, ele para e pede aprovação.
+
+> **Recomendação:** rode pre-commit (PARTE 4) localmente antes de cada commit. O CI é a rede de segurança — o ponto primário de detecção é a sua máquina.
 
 ---
 
@@ -316,12 +383,12 @@ Se durante a implementação uma decisão mudar (ex: nova estrutura de component
 **Prompt para o agente:**
 ```
 Atualize specs/YYYY-MM-DD-nome/plan.md e a implementação para refletir [mudança].
-Sincronize o restante da especificação.
+Sincronize requirements.md, validation.md e security.md.
 ```
 
-O agente atualiza `plan.md`, `requirements.md` e `validation.md` juntos — specs e código sempre em sincronia.
+**Regra de resolução de conflito spec vs. código:** se spec e código divergirem, a pergunta é *qual está mais atualizado*. Se o código mudou por uma razão válida durante a implementação → atualize o spec para refletir o que foi feito e documente o motivo em `requirements.md` na seção Decisions. Se o spec mudou por decisão do time após a implementação → atualize o código para seguir o spec. Nunca deixe os dois divergirem sem registrar a decisão.
 
-**Regra de resolução de conflito spec vs. código:** se spec e código dizem coisas diferentes, a pergunta é *qual está mais atualizado*. Se o código mudou por uma razão válida durante a implementação → atualize o spec para refletir o que foi feito e documente o motivo em `requirements.md` na seção Decisions. Se o spec mudou por decisão do time após a implementação → atualize o código para seguir o spec. Nunca deixe os dois divergirem sem registrar a decisão.
+> **Decisões irreversíveis pós-merge** (mudança de banco, de esquema de auth, de paradigma de cache) viram um ADR em `specs/adr/NNNN-titulo.md`, não uma edição do `requirements.md` antigo.
 
 ---
 
@@ -330,14 +397,16 @@ O agente atualiza `plan.md`, `requirements.md` e `validation.md` juntos — spec
 **Prompt para o agente:**
 ```
 Marque esta fase em specs/roadmap.md como concluída.
-Use sua skill changelog para atualizar o changelog.
-Faça commit deste trabalho, mude para main e faça merge desta branch, depois exclua-a.
+Use a skill changelog para atualizar o CHANGELOG.md.
+Se houve decisão arquitetural irreversível, crie specs/adr/NNNN-titulo.md.
+Faça commit, mude para main, faça merge --no-ff e exclua a branch.
 ```
 
 **O que acontece:**
 1. Agente edita `roadmap.md` → adiciona `✅` na fase concluída
 2. Roda `python3 skills/changelog/scripts/changelog.py` → atualiza `CHANGELOG.md`
-3. `git add` → `git commit` → `git checkout main` → `git merge --no-ff` → `git branch -d`
+3. (Se aplicável) Cria ADR em `specs/adr/`
+4. `git add` → `git commit` → `git checkout main` → `git merge --no-ff` → `git branch -d`
 
 ---
 
@@ -352,16 +421,17 @@ Quando o código já existe mas as specs não (ou estão desatualizadas):
 Temos um projeto [nome] já implementado. Consulte o README.md para entrada das partes interessadas.
 Crie uma constituição em specs/ baseada no que já existe:
 - mission.md
+- principles.md   (extraia regras implícitas do código: estilo de validação, padrão de auth, etc.)
 - tech-stack.md
-- roadmap.md — baseado no código existente, com fases já implementadas marcadas como ✅
+- roadmap.md      (com fases já implementadas marcadas como ✅)
 
-Entreviste-me sobre missão, público-alvo, lacunas na stack de tecnologia.
-Importante: use AskUserQuestion agrupada em 3 antes de escrever no disco.
+Entreviste-me sobre missão, público-alvo, lacunas na stack.
+Use AskUserQuestion agrupada em 3 antes de escrever no disco.
 ```
 
 **O agente vai:**
 1. Ler o código existente (routes, components, db, middleware)
-2. Perguntar sobre missão, público-alvo, lacunas na stack
+2. Perguntar sobre missão, público-alvo, lacunas
 3. Criar specs que **refletem o estado real do código** — não o que estava planejado
 
 **Dica para o roadmap legado:**
@@ -379,10 +449,11 @@ Para features críticas já implementadas, vale criar specs retroativos para doc
 **Prompt:**
 ```
 O código já está implementado.
-Crie um spec retroativo em specs/YYYY-MM-DD-agents/ que documente:
+Crie um spec retroativo em specs/YYYY-MM-DD-nome/ que documente:
 - O que foi implementado (plan.md com tarefas concluídas)
 - As decisões que foram tomadas (requirements.md)
 - Como validar que ainda funciona (validation.md)
+- Quais riscos de segurança já existem (security.md, marcando os já mitigados)
 ```
 
 ### Passo 3: Primeiro Scan de Segurança (Legado)
@@ -409,7 +480,7 @@ Não corrija ainda. Gere um relatório agrupado por:
 Com base no relatório de segurança gerado, crie um backlog de remediação:
 - CRITICAL/HIGH: criar itens no roadmap.md para correção imediata (próximas 2 semanas)
 - MEDIUM: criar itens para o roadmap com prazo definido
-- LOW/INFO: aceitar ou ignorar conscientemente, documentando a decisão em security.md
+- LOW/INFO: aceitar ou ignorar conscientemente, documentando a decisão em specs/principles.md
 ```
 
 **Etapa 3 — Estabelecer linha de base:**
@@ -424,180 +495,15 @@ Documente os comandos locais em specs/tech-stack.md.
 
 ### Passo 4: Continuar com Feature Spec Normal
 
-Após constituição reconstruída e primeiro scan feito, o fluxo é idêntico ao projeto novo (Passo 2 em diante).
+Após constituição reconstruída e primeiro scan feito, o fluxo é idêntico ao projeto novo (Passo 2 da PARTE 1 em diante).
 
 ---
 
-## PARTE 3 — Skills Reutilizáveis
+## PARTE 3 — Qualidade e Resiliência
 
-Skills são arquivos `SKILL.md` que encapsulam workflows repetitivos para que o analista não precise redigitar o mesmo prompt.
+> Esta parte cobre as quatro patologias mais comuns no código gerado por agentes. Documente os critérios em `requirements.md` ANTES da implementação — não depois.
 
-### Skill: changelog
-
-**Arquivo:** `skills/changelog/SKILL.md` + `skills/changelog/scripts/changelog.py`
-
-**Quando usar:** antes de todo merge, para registrar o que mudou.
-
-**Como invocar:**
-```
-Use sua skill changelog para atualizar o changelog.
-```
-
-**O que faz:**
-- Se não existe `CHANGELOG.md`: lê todo `git log`, cria o arquivo
-- Se existe: encontra a data mais recente, adiciona apenas commits novos
-
-**Formato gerado:**
-```markdown
-# Changelog
-
-## 2026-04-20
-- feat: adicionar página About Us
-- fix: corrigir validação do formulário
-
-## 2026-04-19
-- feat: implementar dashboard
-```
-
-### Skill: feature-spec
-
-**Arquivo:** `skills/feature-spec/SKILL.md`
-
-**Quando usar:** para iniciar qualquer nova funcionalidade sem redigitar o prompt longo.
-
-**Como invocar:**
-```
-Use sua skill feature-spec para trabalhar na próxima funcionalidade do roadmap.
-```
-
-**O que faz:**
-1. Lê `specs/roadmap.md` — acha a primeira fase com `[ ]`
-2. Cria branch `YYYY-MM-DD-nome`
-3. Faz AskUserQuestion com 3 perguntas (Escopo / Decisões / Contexto)
-4. Lê `specs/mission.md` e `specs/tech-stack.md`
-5. Cria `specs/YYYY-MM-DD-nome/` com `plan.md`, `requirements.md`, `validation.md`, `security.md`
-
-### Criando uma Nova Skill
-
-**Prompt:**
-```
-Quero parar de repetir este prompt: [cole o prompt repetitivo].
-Ajude-me a escrever uma skill local chamada "[nome]".
-```
-
-**Estrutura do arquivo SKILL.md:**
-```markdown
----
-name: nome-da-skill
-description: Uma frase clara sobre quando usar esta skill.
----
-
-# Nome da Skill
-
-## Workflow
-
-### 1. Passo um
-[instrução]
-
-### 2. Passo dois
-[instrução]
-
-## Constraints
-- [restrição 1]
-- [restrição 2]
-```
-
----
-
-## PARTE 4 — Agentes Especializados
-
-O agente de IA pode assumir **perspectivas especializadas** dependendo da fase do trabalho. Isso melhora a qualidade porque cada perspectiva tem foco, vocabulário e critérios diferentes.
-
-### Quando usar cada perfil de agente
-
-| Perfil | Fase ideal | Foco |
-|---|---|---|
-| **architect-specialist** | P, R | Estrutura, padrões, decisões de longo prazo, trade-offs |
-| **feature-developer** | E | Implementação seguindo spec, grupos do plan.md em ordem |
-| **security-auditor** | R, V | Entry points, OWASP Top 10, critérios do security.md |
-| **performance-optimizer** | V | N+1, budget de queries, memory leaks, profiling |
-| **code-reviewer** | V | Qualidade, tipagem, anti-patterns, cobertura de testes |
-| **bug-fixer** | E (hotfix) | Isolamento do problema, reprodução mínima, fix cirúrgico |
-| **test-writer** | E, V | Cobertura de rotas, property-based testing, edge cases |
-| **documentation-writer** | C | README, howtos, atualização de specs retroativos |
-
-**Como invocar um perfil específico:**
-```
-Aja como [perfil]. Contexto: [descreva o estado atual].
-Seu objetivo nesta sessão: [objetivo específico da fase].
-```
-
-**Exemplo para revisão antes de merge:**
-```
-Aja como code-reviewer. Analise todas as mudanças desta branch com foco em:
-1. Qualidade de código e tipagem
-2. Alinhamento entre spec e implementação
-3. Cobertura de testes e edge cases não tratados
-```
-
----
-
-## PARTE 5 — Revisão com Múltiplos Subagentes
-
-Para revisões profundas antes de merge, use subagentes paralelos com perspectivas diferentes.
-
-**Prompt:**
-```
-Faça uma revisão profunda: crie múltiplos subagentes para passar por todas as mudanças
-desta branch de três perspectivas diferentes e ver se algo não faz sentido, poderia ser melhor, etc.
-```
-
-**Perspectivas recomendadas:**
-1. **TypeScript / Qualidade de Código** — tipagem, padrões, anti-patterns, testes
-2. **Alinhamento Specs vs Implementação** — o que o spec promete vs o que foi entregue
-3. **CSS / UX / Design** — responsividade, brand, acessibilidade
-
----
-
-## PARTE 6 — Replanejamento do Roadmap
-
-Quando o escopo muda (features combinadas, depriorizadas ou divididas):
-
-**Prompt:**
-```
-Vá para o roadmap.md e combine as fases X-Y-Z em uma nova fase única.
-```
-
-ou
-
-```
-A UI web do produto deve seguir design responsivo.
-Atualize as especificações do produto e todas as especificações de funcionalidades para refletir isso,
-bem como qualquer código.
-```
-
-**Regra:** sempre que specs mudarem, o código muda junto — e vice-versa. Eles nunca ficam dessincronizados.
-
----
-
-## PARTE 7 — Análise de Cobertura de Testes
-
-**Prompt:**
-```
-Quais partes do nosso código precisam de mais testes?
-```
-
-O agente analisa:
-- Rotas testadas vs não testadas
-- Componentes com e sem testes unitários
-- Lógica de banco e middleware
-- Top lacunas de risco (o que quebraria em produção sem ser detectado)
-
----
-
-## PARTE 8 — Qualidade e Resiliência
-
-### 8.1 Problema N+1 (Excesso de Queries)
+### 3.1 Problema N+1 (Excesso de Queries)
 
 **O problema:** o agente cria loops que fazem uma query por item em vez de uma query com JOIN ou batch. Em desenvolvimento funciona; em produção, o banco colapsa.
 
@@ -624,7 +530,7 @@ e proponha a query consolidada equivalente (JOIN ou batch).
 
 ---
 
-### 8.2 Race Conditions
+### 3.2 Race Conditions
 
 **O problema:** operações assíncronas simultâneas podem se atropelar — saldos negativos, reservas duplas, deadlocks.
 
@@ -665,7 +571,7 @@ e um teste property-based que a valide.
 
 ---
 
-### 8.3 Memory Leaks
+### 3.3 Memory Leaks
 
 **O problema:** caches sem TTL, event listeners não removidos, conexões não fechadas. A memória cresce ao longo do dia até derrubar a aplicação.
 
@@ -695,15 +601,14 @@ Liste cada ocorrência com o risco associado e a correção recomendada.
 
 ---
 
-### 8.4 Fault Tolerance (Tolerância a Falhas)
+### 3.4 Fault Tolerance (Tolerância a Falhas)
 
 **O problema:** o agente escreve o caminho feliz. Não pensa no que acontece quando o banco cai, o serviço externo não responde ou o dado esperado não está lá.
 
 **Como documentar no spec:**
 
-Em `requirements.md`, seção Confiabilidade:
+Em `requirements.md`, seção Confiabilidade (Failure Modes):
 ```
-Failure modes identificados:
 - Banco indisponível → retornar 503, não 500 sem mensagem
 - Serviço externo com timeout → fallback para cache ou mensagem de erro clara
 - Dado ausente (registro deletado) → 404 com mensagem descritiva
@@ -727,11 +632,11 @@ Proponha o comportamento correto para cada caso e implemente as correções.
 
 ---
 
-## PARTE 9 — Automação de CI/CD
+## PARTE 4 — CI/CD e Shift-Left de Segurança
 
-O shift-left funciona em dois momentos: **localmente, antes do commit**, e **no pipeline, antes do merge**. Ambos são obrigatórios — o CI é a rede de segurança, não o ponto primário de detecção.
+O shift-left funciona em **dois momentos**: localmente, antes do commit (pre-commit hook), e no pipeline, antes do merge (CI). Ambos são obrigatórios — o CI é a rede de segurança, não o ponto primário de detecção.
 
-### 9.0 Escolha de Ferramentas por Stack
+### 4.0 Escolha de Ferramentas por Stack
 
 O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem alternativas. Escolha uma por categoria e documente em `specs/tech-stack.md`.
 
@@ -771,35 +676,58 @@ O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem 
 
 ---
 
-### 9.1 O que fazer quando um secret é encontrado
+### 4.1 Pre-commit Local (ponto primário de detecção)
 
-Quando o TruffleHog (ou qualquer scanner de secrets) retorna um finding, siga este protocolo:
+O CI roda em minutos; o pre-commit roda em segundos. Falha rápido, custa barato.
 
-**1. Revogar imediatamente** — acesse o painel do serviço (AWS, GitHub, Stripe, etc.) e invalide a credencial encontrada. Não espere confirmar se foi usado de forma maliciosa.
+**Setup com `pre-commit` (framework Python multi-stack):**
 
-**2. Rotar** — gere uma nova credencial e atualize nos ambientes necessários (`.env`, secrets manager, CI/CD).
+`.pre-commit-config.yaml`:
+```yaml
+repos:
+  - repo: https://github.com/returntocorp/semgrep
+    rev: v1.x.x
+    hooks:
+      - id: semgrep
+        args: ["--config=auto", "--error", "--severity=ERROR"]
 
-**3. Limpar o histórico git** — se o secret foi commitado, ele persiste no histórico mesmo após remoção do arquivo. Use:
-```bash
-# Instalar
-pip install git-filter-repo
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.x.x
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
 
-# Remover o secret do histórico (substitua pelo valor real)
-git filter-repo --replace-text <(echo "SECRET_VALOR==>SECRET_VALOR_REDACTED")
+  - repo: https://github.com/aquasecurity/trivy
+    rev: v0.x.x
+    hooks:
+      - id: trivy
+        args: ["fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]
 
-# Forçar push (coordenar com o time — reescreve histórico)
-git push --force --all
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        entry: [comando do linter da stack]
+        language: system
+        pass_filenames: false
 ```
 
-**4. Auditar o acesso** — verifique nos logs do serviço se a credencial foi usada por alguém além do time. Documente a conclusão.
+**Instalação (uma vez por dev):**
+```bash
+pipx install pre-commit
+pre-commit install   # instala o hook em .git/hooks/pre-commit
+```
 
-**5. Adicionar ao pre-commit** — configure `detect-secrets` ou `gitleaks` como pre-commit hook para impedir reincidência.
+**Alternativas por ecossistema:**
+- JavaScript/TypeScript: `husky` + `lint-staged`
+- Go: hook bash simples chamando `gosec`/`govulncheck`
+- Polyglot: `lefthook` (binário único, config em YAML)
 
-> **Regra:** nunca commitar um secret, mesmo em repositório privado. Se aconteceu, o secret está comprometido — revogar é obrigatório, não opcional.
+> **Regra:** o pre-commit nunca deve ser pulado com `--no-verify`. Se um hook falha por bug do hook (não do seu código), corrija o hook — nunca o ignore.
 
 ---
 
-### 9.2 Prompts para Rodar Localmente
+### 4.2 Prompts para Rodar Localmente (manual)
 
 Antes de qualquer commit em uma branch de feature, o analista deve rodar o scan local. Use estes prompts:
 
@@ -827,13 +755,42 @@ Mostre apenas HIGH e CRITICAL.
 Configure as ferramentas de segurança para este projeto:
 - Identifique qual SAST, SCA e Secrets scanner é mais adequado para a stack documentada em specs/tech-stack.md
 - Instale as ferramentas necessárias
+- Crie .pre-commit-config.yaml com hooks para todas
 - Crie os workflows em .github/workflows/ para cada uma
 - Documente os comandos locais em specs/tech-stack.md na seção Security
 ```
 
 ---
 
-### 9.3 Semgrep (SAST)
+### 4.3 O que fazer quando um secret é encontrado
+
+Quando o TruffleHog (ou qualquer scanner de secrets) retorna um finding, siga este protocolo:
+
+**1. Revogar imediatamente** — acesse o painel do serviço (AWS, GitHub, Stripe, etc.) e invalide a credencial encontrada. Não espere confirmar se foi usado de forma maliciosa.
+
+**2. Rotar** — gere uma nova credencial e atualize nos ambientes necessários (`.env`, secrets manager, CI/CD).
+
+**3. Limpar o histórico git** — se o secret foi commitado, ele persiste no histórico mesmo após remoção do arquivo. Use:
+```bash
+# Instalar
+pip install git-filter-repo
+
+# Remover o secret do histórico (substitua pelo valor real)
+git filter-repo --replace-text <(echo "SECRET_VALOR==>SECRET_VALOR_REDACTED")
+
+# Forçar push (coordenar com o time — reescreve histórico)
+git push --force --all
+```
+
+**4. Auditar o acesso** — verifique nos logs do serviço se a credencial foi usada por alguém além do time. Documente a conclusão.
+
+**5. Adicionar ao pre-commit** — configure `detect-secrets` ou `gitleaks` como pre-commit hook para impedir reincidência.
+
+> **Regra:** nunca commitar um secret, mesmo em repositório privado. Se aconteceu, o secret está comprometido — revogar é obrigatório, não opcional.
+
+---
+
+### 4.4 Semgrep (SAST) — workflow CI
 
 `.github/workflows/semgrep.yml`:
 
@@ -889,7 +846,7 @@ jobs:
 
 ---
 
-### 9.4 TruffleHog (Secrets)
+### 4.5 TruffleHog (Secrets) — workflow CI
 
 `.github/workflows/trufflehog.yml`:
 
@@ -929,7 +886,7 @@ jobs:
 
 ---
 
-### 9.5 Trivy (SCA — Dependências)
+### 4.6 Trivy (SCA — Dependências) — workflow CI
 
 `.github/workflows/trivy.yml`:
 
@@ -958,7 +915,7 @@ jobs:
 
 ---
 
-### 9.6 Pipeline de Validação de Código
+### 4.7 Pipeline de Validação de Código
 
 `.github/workflows/ci.yml` — jobs de compilação e testes (adaptável por stack):
 
@@ -994,7 +951,7 @@ jobs:
 
 ---
 
-### Estratégia de Fixação de Dependências
+### 4.8 Estratégia de Fixação de Dependências
 
 O agente tende a instalar a versão mais recente de tudo. Isso é um vetor de ataque de supply chain — uma atualização maliciosa de um pacote pode comprometer seu build.
 
@@ -1012,9 +969,272 @@ Proponha as versões fixas equivalentes e explique o risco de cada dependência 
 
 ---
 
+## PARTE 5 — Skills Reutilizáveis
+
+Skills são arquivos `SKILL.md` que encapsulam workflows repetitivos. O padrão moderno usa **progressive disclosure**: o agente carrega só o frontmatter + descrição até decidir invocar a skill — só então abre os scripts/instruções completas.
+
+### Estrutura recomendada
+
+```
+skills/feature-spec/
+├── SKILL.md              ← Frontmatter + descrição (sempre em contexto)
+├── INSTRUCTIONS.md       ← Detalhes carregados sob demanda (opcional)
+├── scripts/              ← Scripts auxiliares (opcional)
+└── examples/             ← Exemplos de uso (opcional)
+```
+
+### Skill: changelog
+
+**Quando usar:** antes de todo merge, para registrar o que mudou.
+
+**Como invocar:**
+```
+Use sua skill changelog para atualizar o changelog.
+```
+
+**O que faz:**
+- Se não existe `CHANGELOG.md`: lê todo `git log`, cria o arquivo
+- Se existe: encontra a data mais recente, adiciona apenas commits novos
+
+**Formato gerado:**
+```markdown
+# Changelog
+
+## 2026-04-20
+- feat: adicionar página About Us
+- fix: corrigir validação do formulário
+
+## 2026-04-19
+- feat: implementar dashboard
+```
+
+### Skill: feature-spec
+
+**Quando usar:** para iniciar qualquer nova funcionalidade sem redigitar o prompt longo.
+
+**Como invocar:**
+```
+Use sua skill feature-spec para trabalhar na próxima funcionalidade do roadmap.
+```
+
+**O que faz:**
+1. Lê `specs/roadmap.md` — acha a primeira fase com `[ ]`
+2. Cria branch `YYYY-MM-DD-nome`
+3. Faz Grill (Escopo / Decisões / Contexto)
+4. Lê `specs/mission.md`, `specs/principles.md` e `specs/tech-stack.md`
+5. Cria `specs/YYYY-MM-DD-nome/` com **todos os artefatos**: `EXECUTE.md`, `plan.md`, `requirements.md`, `test-cases.yaml` (se aplicável), `evals.yaml` (se aplicável), `QA_CHECKLIST.md`, `validation.md`, `security.md`
+
+### Criando uma Nova Skill
+
+**Prompt:**
+```
+Quero parar de repetir este prompt: [cole o prompt repetitivo].
+Ajude-me a escrever uma skill local chamada "[nome]" usando progressive disclosure
+(SKILL.md mínimo + INSTRUCTIONS.md detalhado carregado sob demanda).
+```
+
+**Estrutura mínima do SKILL.md:**
+```markdown
+---
+name: nome-da-skill
+description: Uma frase clara sobre quando usar esta skill (triggers e contexto).
+---
+
+# Nome da Skill
+
+## Quando usar
+[Critério curto e específico]
+
+## Workflow (resumido)
+1. [Passo um]
+2. [Passo dois]
+
+## Detalhes
+Veja `INSTRUCTIONS.md` para o passo-a-passo completo.
+```
+
+---
+
+## PARTE 6 — Subagents Especializados (arquivos versionados)
+
+O agente de IA pode assumir **perspectivas especializadas** dependendo da fase do trabalho. No Claude Code, isso vira um arquivo em `.claude/agents/<nome>.md` — não um simples "aja como X". Subagents reais têm tools, contexto e modelo próprios.
+
+### Quando usar cada perfil
+
+| Perfil | Fase ideal | Foco |
+|---|---|---|
+| **architect-specialist** | P, R | Estrutura, padrões, decisões de longo prazo, trade-offs |
+| **feature-developer** | E | Implementação seguindo spec, slices do plan.md em ordem |
+| **security-auditor** | R, V | Entry points, OWASP Top 10, critérios do security.md |
+| **performance-optimizer** | V | N+1, budget de queries, memory leaks, profiling |
+| **code-reviewer** | V | Qualidade, tipagem, anti-patterns, cobertura de testes |
+| **bug-fixer** | E (hotfix) | Isolamento, reprodução mínima, fix cirúrgico |
+| **test-writer** | E, V | Cobertura, property-based testing, edge cases |
+| **documentation-writer** | C | README, howtos, atualização de specs retroativos |
+
+### Estrutura de um subagent
+
+`.claude/agents/security-auditor.md`:
+```markdown
+---
+name: security-auditor
+description: Revisa código para vulnerabilidades OWASP Top 10. Usar antes de qualquer merge que toque entry points.
+tools: Read, Grep, Bash
+---
+
+# Security Auditor
+
+Você é um auditor de segurança. Para cada arquivo modificado:
+
+1. Identifique entry points (rotas, handlers, parsers)
+2. Para cada um, valide:
+   - Input validation server-side
+   - Saída sanitizada
+   - Auth obrigatória (a menos que documentado em principles.md)
+   - Sem secrets hardcoded
+3. Rode os scans configurados em specs/tech-stack.md
+4. Reporte findings por severidade. Para HIGH/CRITICAL, pare e exija correção.
+
+Critérios: specs/principles.md (segurança) + specs/YYYY-MM-DD-feature/security.md.
+```
+
+### Como invocar
+
+No Claude Code:
+```
+@security-auditor revise as mudanças desta branch
+```
+
+Em outras ferramentas (sem suporte nativo a subagents), use o fallback textual:
+```
+Aja como security-auditor (perfil em .claude/agents/security-auditor.md). Contexto: [estado atual].
+Seu objetivo nesta sessão: [objetivo específico da fase].
+```
+
+---
+
+## PARTE 7 — Revisão com Múltiplos Subagentes
+
+Para revisões profundas antes de merge, use subagentes paralelos com perspectivas diferentes.
+
+**Prompt:**
+```
+Faça uma revisão profunda: dispare em paralelo os subagents code-reviewer, security-auditor
+e performance-optimizer sobre as mudanças desta branch. Compile um relatório único com
+findings agrupados por severidade.
+```
+
+**Perspectivas recomendadas para cada review:**
+1. **Qualidade de Código** — tipagem, padrões, anti-patterns, testes
+2. **Segurança** — entry points, OWASP, princípios violados
+3. **Alinhamento Specs vs Implementação** — o que o spec promete vs o que foi entregue
+4. **CSS / UX / Design** — responsividade, brand, acessibilidade
+
+> **Gate sugerido:** todo PR de escala MEDIUM ou LARGE passa por pelo menos 3 perspectivas antes de merge.
+
+---
+
+## PARTE 8 — STATE.md (Memória entre Sessões)
+
+Quando você for pausar o trabalho para continuar no dia seguinte ou quando o limite de contexto do agente for atingido, salve o contexto para não perder as decisões tácitas.
+
+**Prompt ao encerrar:**
+```
+Atualize specs/STATE.md com o contexto atual:
+- Decisões tomadas hoje
+- O que está pendente
+- Bloqueios encontrados
+- Próximos passos exatos (granulares, acionáveis)
+```
+
+**Prompt ao retomar:**
+```
+Leia specs/STATE.md para recuperar o contexto do nosso trabalho e retome a execução
+a partir dos próximos passos definidos.
+```
+
+**Formato sugerido para STATE.md:**
+```markdown
+# STATE — última atualização: YYYY-MM-DD
+
+## Contexto atual
+[1-2 parágrafos sobre o que está em andamento]
+
+## Branch ativa
+YYYY-MM-DD-nome-feature
+
+## Decisões recentes
+- [data] [decisão] — motivo
+
+## Pendências
+- [ ] Tarefa específica 1
+- [ ] Tarefa específica 2
+
+## Bloqueios
+- [item] aguardando [pessoa/decisão]
+
+## Próximo passo (granular)
+[Exatamente qual comando rodar ou arquivo abrir ao retomar]
+```
+
+---
+
+## PARTE 9 — Lógica Pura e Código Descartável (whenwords)
+
+Inspirado no conceito de "Bibliotecas Sem Código", o SDSD eleva a especificação ao nível de código-fonte quando lidamos com lógicas de negócio pesadas, cálculos ou formatações complexas.
+
+**O Princípio:** o código é volátil e descartável; a Spec é imutável.
+
+### 9.1 Testes Declarativos Agnósticos (`test-cases.yaml`)
+
+Quando uma feature não for apenas um CRUD, mas envolver transformações de dados ou regras de negócio:
+- A pasta da feature DEVE conter um `test-cases.yaml`.
+- O arquivo deve ter apenas arrays de `input` e `expected_output`.
+- Nenhuma referência a frameworks (Jest, PyTest, etc.) deve existir na spec.
+
+**Exemplo:**
+```yaml
+cases:
+  - name: desconto pequeno
+    input: { valor: 100, tipo_cliente: regular }
+    expected_output: { desconto: 0, total: 100 }
+
+  - name: desconto VIP
+    input: { valor: 100, tipo_cliente: vip }
+    expected_output: { desconto: 15, total: 85 }
+```
+
+### 9.2 Avaliações para Features de IA (`evals.yaml`)
+
+Para features que usam LLM, RAG ou qualquer componente não-determinístico, `test-cases.yaml` não basta — você precisa avaliar **propriedades** da resposta, não igualdade exata.
+
+**Exemplo:**
+```yaml
+cases:
+  - name: pergunta sobre política de troca
+    input:
+      query: "posso trocar um produto comprado há 30 dias?"
+    properties:
+      - mentions: ["troca", "30 dias"]
+      - tone: profissional
+      - max_tokens: 200
+      - no_pii_in_response: true
+    threshold: 0.8   # 80% das execuções devem passar
+```
+
+> Se a feature **não** envolve IA, omita `evals.yaml`.
+
+### 9.3 O Spec "Executável" (`EXECUTE.md`)
+
+O `EXECUTE.md` é o "botão de play" da feature. Ele empacota as instruções de execução para o agente — gerado junto com os outros artefatos no Step 2 da PARTE 1.
+
+Se o projeto for reescrito em outra linguagem no futuro, basta rodar o `EXECUTE.md` novamente: a especificação gerará código novo automaticamente.
+
+---
+
 ## PARTE 10 — Sincronização Multi-Ferramenta
 
-O time pode usar diferentes agentes de código (Claude Code, Cursor, Copilot, Windsurf). Os specs do SDSD funcionam em qualquer ferramenta, mas as regras de código (`AGENTS.md`) precisam estar acessíveis em cada uma.
+O time pode usar diferentes agentes (Claude Code, Cursor, Copilot, Windsurf). Os specs do SDSD funcionam em qualquer ferramenta, mas as **regras de código** precisam estar acessíveis em cada uma.
 
 ### Estratégia de sincronização
 
@@ -1030,6 +1250,47 @@ O time pode usar diferentes agentes de código (Claude Code, Cursor, Copilot, Wi
 | Windsurf | `.windsurf/rules/` |
 | Codex | `AGENTS.md` (já lido nativamente) |
 
+### Template `AGENTS.md`
+
+```markdown
+# AGENTS.md — Regras de Código deste Projeto
+
+> Fonte única. Editar AQUI e re-exportar para CLAUDE.md, .cursor/rules/, etc.
+
+## Antes de qualquer mudança
+- Leia specs/principles.md (restrições invioláveis)
+- Identifique a fase no roadmap.md
+- Crie ou atualize a feature spec ANTES de codar
+
+## Convenções de código
+- Naming: [camelCase | snake_case | kebab-case por contexto]
+- Imports: [agrupados / ordenados como X]
+- Erros: nunca silenciosos; sempre logar com contexto
+
+## Comandos do projeto
+| O que | Comando |
+|---|---|
+| Instalar | `[cmd]` |
+| Rodar dev | `[cmd]` |
+| Testar | `[cmd]` |
+| Type check | `[cmd]` |
+| SAST | `[cmd]` |
+| SCA | `[cmd]` |
+| Secrets | `[cmd]` |
+
+## Gates obrigatórios antes de commit
+1. Pre-commit hook passa
+2. Type check em zero
+3. Testes em verde
+4. Specs atualizadas se o comportamento mudou
+
+## O que NÃO fazer
+- Não usar `--no-verify` em commits
+- Não instalar dependência sem fixar versão
+- Não criar rota pública sem documentar em requirements.md
+- Não fazer merge sem atualizar CHANGELOG.md via skill
+```
+
 **Prompt para manter sincronizado:**
 ```
 Leia o AGENTS.md na raiz do projeto.
@@ -1037,13 +1298,13 @@ Exporte as regras para [ferramenta]: crie [arquivo de destino] com o mesmo conte
 adaptado para o formato que [ferramenta] espera.
 ```
 
-**Regra:** nunca edite os arquivos de destino diretamente. Sempre edite o `AGENTS.md` e re-exporte. Isso evita regras divergentes entre ferramentas.
+> **Regra:** nunca edite os arquivos de destino diretamente. Sempre edite o `AGENTS.md` e re-exporte. Isso evita regras divergentes entre ferramentas.
 
 ---
 
-## PARTE 11 — O Prompt "Arquiteto de Produto" (Para Features Complexas)
+## PARTE 11 — O Prompt "Arquiteto de Produto" (Master Prompt)
 
-Quando a funcionalidade a ser construída for complexa e você quiser fazer um "Bootstrap" unificado (ao invés de seguir os passos 1 e 2 manualmente), utilize o **Master Prompt** abaixo com seu agente. Ele já embute as práticas de Grill, Slices Verticais e Separação Humano/IA:
+Quando a funcionalidade for complexa e você quiser fazer um bootstrap unificado (ao invés de seguir os passos 1 e 2 manualmente), use o **Master Prompt** abaixo. Ele já embute Grill, Slices Verticais e Separação Humano/IA:
 
 **Prompt:**
 ```text
@@ -1058,8 +1319,8 @@ Regras absolutas:
 
 ## Etapa 1: A Sessão de "Grill" (Clarificação)
 Faça perguntas sobre a feature abaixo.
-- Faça UMA pergunta por vez.
-- Para cada pergunta, proponha uma resposta recomendada baseada no contexto e nas melhores práticas.
+- UMA pergunta por vez.
+- Para cada pergunta, proponha uma resposta recomendada baseada no contexto, em specs/principles.md e nas melhores práticas.
 - Resolva ambiguidades sobre UX, APIs, Segurança (entry points) e Edge Cases.
 - Só avance para a geração de arquivos quando eu disser que o escopo está claro.
 
@@ -1067,63 +1328,61 @@ Faça perguntas sobre a feature abaixo.
 
 ## Etapa 2: Geração de Arquivos
 Após o Grill, gere/atualize os arquivos em `specs/YYYY-MM-DD-nome-feature/`:
-1. `EXECUTE.md`: O prompt exato que eu (humano) vou usar para pedir a você que codifique esta funcionalidade.
-2. `test-cases.yaml`: (Se houver lógica de negócio complexa) Lista de inputs e outputs matemáticos esperados, agnósticos de linguagem.
-3. `requirements.md`: Contexto, Modelagem de dados, Requisitos não-funcionais (Failure modes, Concorrência) e Fora de Escopo.
-4. `security.md`: Entry points, vetores de ataque, requisitos de validação.
-5. `plan.md`: Dividido em Fatias Verticais (Vertical Slices) independentes. Cada fatia deve conter DB, Backend e UI, e ser classificada como [AFK] (agente faz sozinho) ou [HITL] (requer revisão humana a cada passo).
-6. `QA_CHECKLIST.md`: Checklist focado apenas na validação manual humana (UX, edge cases complexos).
+1. EXECUTE.md       — prompt exato para iniciar a implementação
+2. test-cases.yaml  — (se houver lógica de negócio) inputs/outputs agnósticos
+3. evals.yaml       — (se houver IA/LLM/RAG) casos de avaliação não-determinísticos
+4. requirements.md  — contexto, data model, NFRs (Failure modes, Concorrência), Fora de Escopo
+5. security.md      — entry points, vetores de ataque, requisitos de validação
+6. plan.md          — fatias verticais (DB + Backend + UI), classificadas como [AFK] ou [HITL]
+7. QA_CHECKLIST.md  — checklist focado em validação manual humana
 
 ## Etapa 3: Resumo Executivo
-Ao finalizar a geração, me entregue nesta resposta:
+Ao finalizar a geração, me entregue:
 - As 3 principais premissas assumidas.
 - Os 3 maiores riscos técnicos.
 - O que o agente fará sozinho (AFK) e onde precisará de mim (HITL).
+- Quais princípios de specs/principles.md são especialmente relevantes para esta feature.
 ```
 
 ---
 
-## PARTE 12 — Uso do STATE.md (Memória entre Sessões)
+## PARTE 12 — Replanejamento do Roadmap
 
-Quando você for pausar o trabalho para continuar no dia seguinte ou quando o limite de contexto do agente for atingido, salve o contexto para não perder as decisões tácitas:
+Quando o escopo muda (features combinadas, depriorizadas ou divididas):
 
-**Prompt ao encerrar:**
+**Prompt:**
 ```
-Atualize o arquivo specs/STATE.md com o contexto atual: quais decisões foram tomadas hoje, o que está pendente, bloqueios encontrados e quais devem ser os próximos passos exatos.
+Vá para o roadmap.md e combine as fases X-Y-Z em uma nova fase única.
 ```
 
-**Prompt ao retomar:**
+ou
+
 ```
-Leia o specs/STATE.md para recuperar o contexto do nosso trabalho e retome a execução a partir dos próximos passos definidos.
+A UI web do produto deve seguir design responsivo.
+Atualize as especificações do produto e todas as especificações de funcionalidades para refletir isso,
+bem como qualquer código.
 ```
+
+**Regra:** sempre que specs mudarem, o código muda junto — e vice-versa. Eles nunca ficam dessincronizados.
 
 ---
 
-## PARTE 13 — Lógica Pura e Código Descartável (O Padrão "whenwords")
+## PARTE 13 — Análise de Cobertura de Testes & Evals
 
-Inspirado no conceito de "Bibliotecas Sem Código", o SDSD eleva a especificação ao nível de código-fonte quando lidamos com lógicas de negócio pesadas, cálculos ou formatações complexas.
-
-**O Princípio:** O código é volátil e descartável; a Spec é imutável.
-
-### 1. Testes Declarativos Agnósticos (`test-cases.yaml`)
-Quando uma feature não for apenas um CRUD, mas envolver transformações de dados ou regras de negócio:
-- A pasta da feature DEVE conter um `test-cases.yaml`.
-- O arquivo deve ter apenas arrays de `input` e `expected_output`.
-- Nenhuma referência a frameworks (Jest, PyTest, etc) deve existir na spec.
-
-### 2. O Spec "Executável" (`EXECUTE.md`)
-O arquivo `EXECUTE.md` (gerado junto com os outros arquivos da feature) é o "botão de play". Ele empacota as instruções para o agente.
-
-**Conteúdo típico de um EXECUTE.md:**
-```markdown
-Implemente a funcionalidade lendo os arquivos desta pasta:
-1. Leia `requirements.md` e `security.md` para entender o comportamento.
-2. Leia `test-cases.yaml` e gere uma suíte de testes na linguagem do projeto.
-3. Implemente a lógica em fatias conforme o `plan.md`.
-4. Rode a suíte de testes em loop até que TODOS os casos do `test-cases.yaml` passem.
-5. Pare nas tarefas [HITL] e peça minha aprovação.
+**Prompt para testes determinísticos:**
 ```
-Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta rodar o `EXECUTE.md` novamente — a especificação gerará código novo automaticamente.
+Quais partes do nosso código precisam de mais testes?
+Analise: rotas testadas vs não testadas, componentes com/sem unit tests,
+lógica de banco e middleware. Liste as top 5 lacunas de risco.
+```
+
+**Prompt para evals (features de IA):**
+```
+Para cada feature em specs/ que tenha evals.yaml, rode o harness e reporte:
+- Taxa de aprovação por feature
+- Casos que passaram do threshold mas estão próximos do limite
+- Regressões em relação à última execução
+```
 
 ---
 
@@ -1131,14 +1390,14 @@ Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta roda
 
 | Situação | Prompt |
 |---|---|
-| Projeto novo — iniciar | "Crie uma constituição em specs/ com mission.md, tech-stack.md e roadmap.md. Use AskUserQuestion agrupada em 3 antes de escrever." |
+| Projeto novo — iniciar | "Crie uma constituição em specs/ com mission.md, principles.md, tech-stack.md e roadmap.md. Use Grill (1 pergunta por vez) antes de escrever." |
 | Próxima funcionalidade | "Use sua skill feature-spec para trabalhar na próxima funcionalidade do roadmap." |
-| Implementar | "Implemente os grupos de tarefas restantes." |
-| Spec mudou | "Atualize o plan.md e a implementação para refletir [mudança]. Sincronize o resto da spec." |
-| Antes do merge | "Use sua skill changelog para atualizar o changelog." |
+| Implementar | "Execute o EXECUTE.md desta feature." |
+| Spec mudou | "Atualize plan.md e a implementação para refletir [mudança]. Sincronize requirements.md, validation.md e security.md." |
+| Antes do merge | "Use sua skill changelog para atualizar o changelog. Crie ADR se a decisão for irreversível." |
 | Merge e limpeza | "Marque esta fase como concluída no roadmap. Faça commit, mude para main, faça merge e exclua a branch." |
-| Revisão profunda | "Faça uma revisão profunda com múltiplos subagentes: qualidade de código, alinhamento de specs, CSS/UX." |
-| Projeto legado | "Crie uma constituição baseada no código existente. Entreviste-me sobre missão, público-alvo e lacunas na stack." |
+| Revisão profunda | "Dispare em paralelo code-reviewer, security-auditor e performance-optimizer. Compile um relatório único." |
+| Projeto legado | "Crie uma constituição baseada no código existente, incluindo principles.md extraído das convenções implícitas." |
 | Cobertura de testes | "Quais partes do nosso código precisam de mais testes?" |
 | Replanejamento | "Combine as fases X-Y em uma única fase no roadmap." |
 | N+1 / queries | "Analise as rotas e identifique problemas N+1. Mostre o número de queries por rota e proponha a query consolidada." |
@@ -1146,13 +1405,16 @@ Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta roda
 | Memory leaks | "Revise o código em busca de caches sem TTL, conexões não fechadas e listeners sem remoção correspondente." |
 | Fault tolerance | "Para cada rota, liste os failure modes possíveis e o comportamento atual. Proponha e implemente o tratamento correto." |
 | Dependências fixas | "Revise o manifesto de dependências. Liste versões flutuantes e proponha versões fixas equivalentes." |
-| Agente especializado | "Aja como [perfil de agente]. Contexto: [estado atual]. Objetivo: [fase atual]." |
-| **Segurança — configurar ferramentas** | "Identifique o SAST, SCA e Secrets scanner mais adequado para a stack em specs/tech-stack.md. Instale, configure e crie os workflows em .github/workflows/. Documente os comandos locais em specs/tech-stack.md." |
-| **Segurança — scan local (feature)** | "Rode o scan de segurança local: [SAST] em src/, [SCA] no manifesto, [Secrets] no histórico desta branch. Reporte HIGH e CRITICAL. Para cada um, proponha a correção antes de continuarmos." |
-| **Segurança — primeiro scan (legado)** | "Rode o scan completo sem bloquear. Gere relatório por severidade e categoria. Depois crie o backlog de remediação no roadmap.md separando imediato (CRITICAL/HIGH) de planejado (MEDIUM)." |
-| **Segurança — adicionar CI** | "Crie os workflows .github/workflows/ para [SAST], [SCA] e [Secrets] escolhidos em specs/tech-stack.md. Use os exemplos da PARTE 9 do guia como base." |
-| **Secret encontrado** | "Um secret foi encontrado pelo scanner. Revogue a credencial em [serviço], rode git filter-repo para limpar o histórico e configure pre-commit para prevenir reincidência." |
-| **Sincronizar regras** | "Leia o AGENTS.md e exporte as regras para [Cursor / Copilot / Windsurf], criando o arquivo de destino no formato correto." |
+| Subagent especializado | "@[nome-do-agent] revise/execute [contexto]." (Claude Code) ou "Aja como [perfil] em .claude/agents/[nome].md." |
+| **Segurança — configurar ferramentas** | "Identifique SAST, SCA, Secrets e pre-commit framework adequados para a stack. Instale, configure e crie os workflows. Documente em specs/tech-stack.md." |
+| **Segurança — pre-commit local** | "Crie .pre-commit-config.yaml com hooks para SAST, SCA, Secrets e linter. Instale e ative o hook." |
+| **Segurança — scan local (feature)** | "Rode scan local: SAST em src/, SCA no manifesto, Secrets no histórico desta branch. Reporte HIGH/CRITICAL e proponha correções." |
+| **Segurança — primeiro scan (legado)** | "Rode o scan completo sem bloquear. Gere relatório por severidade e categoria. Crie backlog de remediação no roadmap.md." |
+| **Segurança — adicionar CI** | "Crie os workflows .github/workflows/ para SAST, SCA e Secrets escolhidos. Use os exemplos da PARTE 4 como base." |
+| **Secret encontrado** | "Um secret foi encontrado. Revogue em [serviço], rode git filter-repo para limpar o histórico e configure pre-commit para prevenir reincidência." |
+| **Sincronizar regras** | "Leia o AGENTS.md e exporte para [Cursor / Copilot / Windsurf], criando o arquivo de destino no formato correto." |
+| **Salvar contexto** | "Atualize specs/STATE.md com decisões, pendências, bloqueios e próximo passo granular." |
+| **Retomar contexto** | "Leia specs/STATE.md e retome do próximo passo." |
 
 ---
 
@@ -1163,30 +1425,34 @@ Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta roda
 [ ] specs/YYYY-MM-DD-nome/EXECUTE.md criado (prompt de execução pronto)
 [ ] specs/YYYY-MM-DD-nome/plan.md criado (fatias verticais com tags [AFK] e [HITL])
 [ ] specs/YYYY-MM-DD-nome/requirements.md criado (escopo, decisões, contexto, NFRs)
-[ ] specs/YYYY-MM-DD-nome/test-cases.yaml criado (para lógicas complexas agnósticas)
+[ ] specs/YYYY-MM-DD-nome/test-cases.yaml criado (se houver regra de negócio/transformação)
+[ ] specs/YYYY-MM-DD-nome/evals.yaml criado (se a feature usa IA/LLM/RAG)
 [ ] specs/YYYY-MM-DD-nome/QA_CHECKLIST.md criado (validação humana de UX e regressões)
 [ ] specs/YYYY-MM-DD-nome/validation.md criado (definition of done automatizado)
 [ ] specs/YYYY-MM-DD-nome/security.md criado (entry points, riscos, requisitos)
-[ ] Implementação completa (todas as fatias verticais do plan.md testadas)
+[ ] Implementação completa (todas as fatias do plan.md testadas)
+[ ] Pre-commit hook ativo e passando localmente
 [ ] [verificação de tipos] → exit 0
 [ ] [suite de testes] → todos passam
 [ ] Verificação manual no browser
 [ ] Spec atualizado se algo mudou durante implementação
 --- Qualidade e Resiliência ---
-[ ] Rotas com coleção revisadas para N+1 — budget de queries documentado no requirements.md
+[ ] Rotas com coleção revisadas para N+1 — budget de queries documentado
 [ ] Operações de escrita concorrente têm mitigação (lock / transaction / idempotency key)
-[ ] Failure modes documentados no requirements.md e tratados no código
+[ ] Failure modes documentados e tratados no código
 [ ] Sem caches sem TTL ou conexões não fechadas
 --- Segurança ---
-[ ] [SAST: semgrep / bandit / gosec / outro] → 0 HIGH/CRITICAL
-[ ] [SCA: trivy / npm audit / pip-audit / outro] → 0 HIGH/CRITICAL
-[ ] [Secrets: trufflehog / gitleaks / outro] → 0 findings
+[ ] [SAST] → 0 HIGH/CRITICAL
+[ ] [SCA] → 0 HIGH/CRITICAL
+[ ] [Secrets] → 0 findings
 [ ] Dependências com versão fixa (sem ^ ou ~ em produção)
-[ ] Workflows de CI/CD de segurança criados em .github/workflows/
+[ ] Workflows de CI/CD de segurança ativos em .github/workflows/
 [ ] Ferramentas escolhidas documentadas em specs/tech-stack.md
+[ ] Nenhum princípio de specs/principles.md violado
 --- Merge ---
 [ ] Fase marcada como ✅ no roadmap.md
 [ ] CHANGELOG.md atualizado via skill changelog
+[ ] ADR criado em specs/adr/ (se decisão irreversível)
 [ ] Commit feito com mensagem descritiva
 [ ] Merge em main com --no-ff
 [ ] Branch deletada
@@ -1201,18 +1467,23 @@ Desta forma, se o projeto for reescrito em outra linguagem no futuro, basta roda
 
 | Anti-pattern | Por quê evitar | O que fazer |
 |---|---|---|
-| Codar sem spec | Sem rastreabilidade, sem alinhamento | Sempre criar plan.md + requirements.md + validation.md + security.md antes |
+| Codar sem spec | Sem rastreabilidade, sem alinhamento | Sempre criar spec da feature antes |
 | Spec e código dessincronizados | Futuro analista não sabe o que é real | Atualizar spec sempre que implementação mudar; registrar decisão em requirements.md |
 | Commit sem changelog | Histórico perdido | Rodar skill changelog antes de todo merge |
 | Branch longa com muitas features | Dificulta revisão e rollback | Uma feature = uma branch = um merge |
-| Roadmap com fases grandes | Feature demora, feedback tardio | Fases devem ser implementáveis em uma sessão (máx. 5 grupos no plan.md) |
-| Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre AskUserQuestion ANTES de criar arquivos |
-| Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Rodar SAST/SCA/Secrets localmente antes do commit — CI é rede de segurança, não ponto primário |
+| Roadmap com fases grandes | Feature demora, feedback tardio | Fases implementáveis em uma sessão (máx. 5 grupos no plan.md) |
+| Perguntas depois de escrever no disco | Desperdício se o usuário quer algo diferente | Sempre Grill ANTES de criar arquivos |
+| Segurança só no CI/CD | Feedback tardio, PR vira campo de batalha | Pre-commit local é o ponto primário; CI é rede de segurança |
 | Feature sem security.md | Riscos não documentados, sem critério de aceite | Todo spec de feature inclui security.md obrigatório |
 | Rotas sem budget de queries | N+1 invisível em dev, colapso em produção | Documentar limite de queries no requirements.md e validar |
 | Sem failure modes no spec | Código trata só o caminho feliz | Seção Confiabilidade no requirements.md com cenários de falha |
-| Versões flutuantes de dependências | Supply chain: atualização maliciosa entra sem revisão | Fixar versões no manifesto e commitar o lockfile |
-| Sem property-based testing em escrita concorrente | Race conditions passam despercebidas nos testes unitários | Identificar invariantes e usar biblioteca de property-based testing |
+| Versões flutuantes de dependências | Supply chain: atualização maliciosa entra sem revisão | Fixar versões e commitar lockfile |
+| Sem property-based testing em escrita concorrente | Race conditions passam despercebidas | Identificar invariantes e usar property-based testing |
 | Secret encontrado → só remover do código | Secret no histórico git continua exposto | Revogar credencial + git filter-repo + auditar acesso |
 | Regras de código só em um arquivo de ferramenta | Time diverge entre Cursor/Copilot/Claude | AGENTS.md como fonte única, exportar para cada ferramenta |
 | Fluxo completo P→R→E→V→C para todo bugfix | Overhead desnecessário | Usar escala de workflow: QUICK para fixes, LARGE só para sistemas complexos |
+| Subagent como string "aja como X" | Sem persistência, sem tools dedicadas | Criar arquivo `.claude/agents/<nome>.md` versionado |
+| Skill monolítica | Consome contexto desnecessariamente | Progressive disclosure: SKILL.md mínimo + INSTRUCTIONS.md sob demanda |
+| Editar CLAUDE.md sem editar AGENTS.md | Times com várias ferramentas divergem | Editar AGENTS.md e re-exportar |
+| Pular pre-commit com --no-verify | Findings entram no histórico | Corrigir o hook ou o código; nunca pular |
+| Usar test-cases.yaml para feature de IA | Outputs não-determinísticos não casam por igualdade | Usar evals.yaml com propriedades + threshold |

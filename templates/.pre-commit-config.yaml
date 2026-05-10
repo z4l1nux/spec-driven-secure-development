@@ -1,0 +1,69 @@
+# Pre-commit local — ponto primário de detecção de problemas
+# Instalação:
+#   pipx install pre-commit
+#   pre-commit install
+#
+# Ajuste as versões `rev` para a release atual de cada hook.
+# Veja https://pre-commit.com/hooks.html para mais opções.
+
+repos:
+  # ─── Higiene básica ────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+
+  # ─── SAST ─────────────────────────────────────────────────────────
+  - repo: https://github.com/returntocorp/semgrep
+    rev: v1.92.0
+    hooks:
+      - id: semgrep
+        args: ["--config=auto", "--error", "--severity=ERROR"]
+
+  # ─── Secrets (commit local; histórico fica no CI com TruffleHog) ──
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        # Gere a baseline uma vez:  detect-secrets scan > .secrets.baseline
+
+  # ─── SCA (filesystem) ─────────────────────────────────────────────
+  - repo: https://github.com/aquasecurity/trivy
+    rev: v0.57.0
+    hooks:
+      - id: trivy
+        args: ["fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]
+
+  # ─── Lint da stack (substitua pelo da sua linguagem) ──────────────
+  - repo: local
+    hooks:
+      - id: lint
+        name: lint
+        # Exemplos:
+        #   JS/TS:  entry: npx eslint --max-warnings=0
+        #   Python: entry: ruff check
+        #   Go:     entry: golangci-lint run
+        entry: echo "configure o linter da sua stack aqui"
+        language: system
+        pass_filenames: false
+
+      - id: typecheck
+        name: type check
+        # Exemplos:
+        #   TS:     entry: npx tsc --noEmit
+        #   Python: entry: mypy .
+        entry: echo "configure o type checker da sua stack aqui"
+        language: system
+        pass_filenames: false
+
+# ─── Notas ─────────────────────────────────────────────────────────
+# - Nunca pule este hook com --no-verify. Se um hook falha por bug do hook
+#   (não do seu código), corrija o hook — não o ignore.
+# - O CI continua sendo a rede de segurança: rode os mesmos scans em
+#   .github/workflows/ para barrar PRs que contornem o pre-commit local.

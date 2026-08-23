@@ -1,5 +1,7 @@
 # Guia Técnico: Spec-Driven Secure Development (SDSD)
 
+[English edition](GUIA-SDSD.en.md)
+
 > Referência hands-on para qualquer analista do time.
 > Cobre projetos **novos** e projetos **em andamento (legado)**.
 > Compatível com Claude Code, Cursor, Copilot, Windsurf e Codex.

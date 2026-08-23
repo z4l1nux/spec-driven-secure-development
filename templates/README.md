@@ -1,5 +1,7 @@
 # Templates SDSD
 
+[English](README.en.md)
+
 Cópias prontas dos arquivos referenciados no [GUIA-SDSD.md](../GUIA-SDSD.md). Eles materializam o bootstrap do projeto consumidor; ajuste os placeholders entre `[colchetes]` depois do Grill.
 
 ## Conteúdo

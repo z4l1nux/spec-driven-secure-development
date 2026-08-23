@@ -1,0 +1,24 @@
+# vet policy for spec-driven-secure-development
+# Documentation/spec project - minimal policy
+version: 1
+rules:
+  - id: no-known-vulnerabilities
+    description: "Block dependencies with known vulnerabilities"
+    severity: high
+    packages:
+      - ecosystem: "*"
+        vulnerability:
+          min_severity: high
+  - id: license-compliance
+    description: "Ensure license compliance"
+    severity: medium
+    packages:
+      - ecosystem: "*"
+        licenses:
+          allowed:
+            - MIT
+            - Apache-2.0
+            - BSD-3-Clause
+            - BSD-2-Clause
+            - ISC
+            - CC0-1.0

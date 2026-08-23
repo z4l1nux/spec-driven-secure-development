@@ -26,7 +26,8 @@ Esta checklist é utilizada por agentes de IA (e humanos) para validar a qualida
 ## Boas Práticas e Padrões:
 - [ ] Os padrões de implementação aprovados (`.harness/patterns/`) foram seguidos?
 - [ ] O glossário de domínio (`.harness/domain-glossary.md`) foi consultado para terminologia?
-- [ ] Decisões arquiteturais relevantes foram documentadas em ADRs (`.harness/adr/`)?
+- [ ] Decisões sobre este kit foram documentadas em ADRs (`.harness/adr/`)?
+- [ ] Decisões do projeto consumidor foram documentadas em `specs/adr/`?
 
 ## Observações para IAs:
 - Fornecer feedback específico com referências a linhas de código ou seções da especificação.

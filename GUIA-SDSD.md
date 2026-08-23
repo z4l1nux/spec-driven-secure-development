@@ -37,6 +37,28 @@ copiados. Este repositório contém o guia, os templates em `templates/` e o
 contexto compartilhado em `.harness/`; ele não pretende ser uma aplicação já
 instalada.
 
+### Fronteira entre o kit e o projeto consumidor
+
+Use esta regra para ligar cada artefato ao seu dono:
+
+| Camada | Artefatos | Papel no fluxo |
+|---|---|---|
+| Metodologia | `GUIA-SDSD.md` | Define etapas, gates, prompts e critérios de escala |
+| Bootstrap | `templates/` | Fornece os arquivos iniciais para um projeto consumidor |
+| Constituição | `projeto/specs/mission.md`, `principles.md`, `tech-stack.md`, `roadmap.md` | Define propósito, limites, stack e ordem do trabalho |
+| Feature | `projeto/specs/YYYY-MM-DD-nome/` | Converte uma fase em requisitos, plano, segurança e validação executáveis |
+| Governo dos agentes | `projeto/AGENTS.md`, `projeto/.claude/`, `projeto/skills/` | Aplica regras, perfis e automações durante a execução |
+| Verificação | `projeto/.pre-commit-config.yaml`, `projeto/.github/workflows/` | Bloqueia problemas localmente e antes do merge |
+| Memória e histórico | `projeto/specs/STATE.md`, `projeto/specs/adr/`, `projeto/CHANGELOG.md` | Preserva contexto, decisões irreversíveis e mudanças confirmadas |
+
+Os arquivos equivalentes na raiz deste repositório (`specs/`, `.harness/` e
+`.github/workflows/`) pertencem ao desenvolvimento do próprio kit. Não são,
+automaticamente, a constituição, o contexto ou o CI de uma aplicação consumidora.
+
+Para instalar o kit, siga `templates/README.md`; para operar uma feature, siga
+os Passos 1 a 5 desta parte. Assim, cada etapa tem uma fonte, um destino e um
+gate verificável.
+
 ```
 projeto/
 ├── specs/                          ← Constituição + specs de funcionalidades
@@ -62,8 +84,7 @@ projeto/
 │   └── commands/                   ← Slash commands customizados (opcional)
 ├── skills/                         ← Skills reutilizáveis (progressive disclosure)
 │   ├── changelog/
-│   │   ├── SKILL.md                ← Frontmatter + descrição (sempre carregado)
-│   │   └── scripts/changelog.py    ← Carregado só quando a skill é invocada
+│   │   └── SKILL.md                ← Frontmatter + workflow (carregado quando invocado)
 │   └── feature-spec/
 │       └── SKILL.md
 ├── AGENTS.md                       ← Fonte única das regras de código (exportada para cada ferramenta)
@@ -409,7 +430,7 @@ Faça commit, mude para main, faça merge --no-ff e exclua a branch.
 
 **O que acontece:**
 1. Agente edita `roadmap.md` → adiciona `✅` na fase concluída
-2. Roda `python3 skills/changelog/scripts/changelog.py` → atualiza `CHANGELOG.md`
+2. Invoca a skill `changelog` → atualiza `CHANGELOG.md` conforme o histórico real
 3. (Se aplicável) Cria ADR em `specs/adr/`
 4. `git add` → `git commit` → `git checkout main` → `git merge --no-ff` → `git branch -d`
 

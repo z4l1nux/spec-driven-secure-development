@@ -40,27 +40,10 @@ repos:
       - id: trivy
         args: ["fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]
 
-  # ─── Lint da stack (substitua pelo da sua linguagem) ──────────────
-  - repo: local
-    hooks:
-      - id: lint
-        name: lint
-        # Exemplos:
-        #   JS/TS:  entry: npx eslint --max-warnings=0
-        #   Python: entry: ruff check
-        #   Go:     entry: golangci-lint run
-        entry: echo "configure o linter da sua stack aqui"
-        language: system
-        pass_filenames: false
-
-      - id: typecheck
-        name: type check
-        # Exemplos:
-        #   TS:     entry: npx tsc --noEmit
-        #   Python: entry: mypy .
-        entry: echo "configure o type checker da sua stack aqui"
-        language: system
-        pass_filenames: false
+  # ─── Lint e type check ────────────────────────────────────────────
+  # Adicione hooks locais para a linguagem escolhida. O template não
+  # registra comandos fictícios: gates que apenas executam `echo` dão
+  # uma falsa sensação de validação.
 
 # ─── Notas ─────────────────────────────────────────────────────────
 # - Nunca pule este hook com --no-verify. Se um hook falha por bug do hook

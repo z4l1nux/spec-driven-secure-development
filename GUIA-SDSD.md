@@ -32,6 +32,11 @@ Se você é novo no projeto ou no fluxo SDSD:
 
 ## Estrutura de Arquivos
 
+O layout abaixo descreve o projeto consumidor depois que os templates forem
+copiados. Este repositório contém o guia, os templates em `templates/` e o
+contexto compartilhado em `.harness/`; ele não pretende ser uma aplicação já
+instalada.
+
 ```
 projeto/
 ├── specs/                          ← Constituição + specs de funcionalidades

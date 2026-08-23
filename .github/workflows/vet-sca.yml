@@ -1,17 +1,20 @@
 name: vet OSS Components
 
 on:
+  pull_request:
   push:
     branches:
-      - "**"
-  pull_request:
-    branches:
-      - "**"
+      - main
 
 permissions:
+  # Required for actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 #v6
   contents: read
+
+  # Required for writing pull request comment
   issues: write
   pull-requests: write
+
+  # Required for uploading findings to Github security tab
   security-events: write
 
 jobs:
@@ -22,13 +25,15 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6
 
       - name: Run vet
         id: vet
-        uses: safedep/vet-action@v1
+        uses: safedep/vet-action@803d55e5de51766bd92c106d6bc1eb1a1858e4a3 # v1
         with:
+          # Path to the policy file.
+          # Remove following line to use the default policy
           policy: .github/policies/vet-policy.yml
-          trusted-registries: |
         env:
+          # Required for writing pull request comment
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

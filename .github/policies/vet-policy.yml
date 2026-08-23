@@ -1,24 +1,22 @@
-# vet policy for spec-driven-secure-development
-# Documentation/spec project - minimal policy
-version: 1
-rules:
-  - id: no-known-vulnerabilities
-    description: "Block dependencies with known vulnerabilities"
-    severity: high
-    packages:
-      - ecosystem: "*"
-        vulnerability:
-          min_severity: high
-  - id: license-compliance
-    description: "Ensure license compliance"
-    severity: medium
-    packages:
-      - ecosystem: "*"
-        licenses:
-          allowed:
-            - MIT
-            - Apache-2.0
-            - BSD-3-Clause
-            - BSD-2-Clause
-            - ISC
-            - CC0-1.0
+name: SDSD OSS Security Policy
+description: |
+  Filter suite for blocking high-risk vulnerabilities and restricted OSS
+  licenses in the repository dependencies.
+tags:
+  - security
+  - oss
+filters:
+  - name: critical-or-high-vulnerabilities
+    check_type: CheckTypeVulnerability
+    summary: Critical or high risk vulnerabilities were found
+    value: |
+      vulns.critical.exists(p, true) || vulns.high.exists(p, true)
+  - name: restricted-oss-licenses
+    check_type: CheckTypeLicense
+    summary: A restricted OSS license was detected
+    value: |
+      licenses.exists(p, p == "GPL-2.0") ||
+      licenses.exists(p, p == "GPL-2.0-only") ||
+      licenses.exists(p, p == "GPL-3.0") ||
+      licenses.exists(p, p == "GPL-3.0-only") ||
+      licenses.exists(p, p == "BSD-3-Clause OR GPL-2.0")

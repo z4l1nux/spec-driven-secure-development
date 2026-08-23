@@ -12,7 +12,7 @@ Ready-to-use copies of the files referenced by the [SDSD technical guide](../GUI
 | [`specs/roadmap.md`](specs/roadmap.md) | `specs/roadmap.md` | Constitution: ordered work phases |
 | [`specs/STATE.md`](specs/STATE.md) | `specs/STATE.md` | Persistent session memory |
 | [`specs/_feature/`](specs/_feature/) | `specs/YYYY-MM-DD-name/` | Feature artifact stubs |
-| [`AGENTS.md`](AGENTS.md) | `AGENTS.md` | Single source for agent coding rules |
+| [`AGENTS.md`](AGENTS.md) · [`AGENTS.en.md`](AGENTS.en.md) | `AGENTS.md` | Single source for agent coding rules; English reference included |
 | [`.pre-commit-config.yaml`](.pre-commit-config.yaml) | `.pre-commit-config.yaml` | Local shift-left checks |
 | [`.claude/agents/`](.claude/agents/) | `.claude/agents/` | `security-auditor`, `code-reviewer`, `feature-developer`, and `performance-optimizer` |
 | [`skills/`](skills/) | `skills/` | Reusable changelog and feature-spec workflows |

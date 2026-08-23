@@ -70,6 +70,7 @@ Skill `changelog` atualiza o `CHANGELOG.md`. Decisões irreversíveis viram um A
 
 - 👉 **[Guia técnico completo (GUIA-SDSD.md)](GUIA-SDSD.md)** · [English edition](GUIA-SDSD.en.md) — fluxo detalhado, prompts, prevenção de N+1/race conditions/memory leaks, CI/CD
 - 📁 **[Templates prontos (`templates/`)](templates/)** · [English edition](templates/README.en.md) — constituição, specs de feature, skills, agentes e pre-commit para copiar direto no seu projeto
+- 🧩 **Contexto do kit:** [`specs/`](specs/) · [English index](specs/README.en.md) · [`.harness/`](.harness/) · [English index](.harness/README.en.md)
 
 O diretório [`.harness/`](.harness/) contém contexto operacional reutilizável,
 como glossário, limites, padrões e modelos de registros. Ele complementa os
@@ -138,6 +139,7 @@ Every task follows **P → R → E → V → C**: Plan, Review, Execute, Validat
 
 - [Technical guide (English)](GUIA-SDSD.en.md) · [Portuguese edition](GUIA-SDSD.md) — detailed workflow, prompts, resilience, and CI/CD
 - [Ready-to-use templates (English)](templates/README.en.md) · [Portuguese edition](templates/) — constitution, feature specs, skills, agents, and pre-commit
+- [Kit context and specifications](specs/README.en.md) · [Harness context](.harness/README.en.md) — maintenance contracts for this repository
 
 The English section of this README is the entry point for English-speaking contributors. File names, commands, and technical identifiers remain unchanged so both language versions describe the same repository structure.
 

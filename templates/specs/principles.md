@@ -17,10 +17,13 @@
 
 ## Privacidade / Compliance
 
-- [ex: LGPD — base legal documentada para cada coleta de dado pessoal]
-- [ex: dados pessoais criptografados em repouso e em trânsito]
-- [ex: consentimento explícito antes de coletar dado sensível]
-- [ex: retenção máxima de N dias para logs com PII]
+Substitua os itens abaixo pelas regras aprovadas para o seu produto antes de
+iniciar uma feature. Eles são exemplos, não controles implementados:
+
+- [TODO: LGPD — base legal documentada para cada coleta de dado pessoal]
+- [TODO: dados pessoais criptografados em repouso e em trânsito]
+- [TODO: consentimento explícito antes de coletar dado sensível]
+- [TODO: retenção máxima de N dias para logs com PII]
 
 ## Qualidade
 
@@ -31,15 +34,15 @@
 
 ## UX
 
-- [ex: feedback visível em ações > 200ms (loading, skeleton, etc.)]
-- [ex: mensagens de erro acionáveis, nunca códigos crus]
-- [ex: nenhuma ação destrutiva sem confirmação ou undo]
-- [ex: acessibilidade WCAG 2.1 nível AA como linha de base]
+- [TODO: feedback visível em ações > 200ms (loading, skeleton, etc.)]
+- [TODO: mensagens de erro acionáveis, nunca códigos crus]
+- [TODO: nenhuma ação destrutiva sem confirmação ou undo]
+- [TODO: acessibilidade WCAG 2.1 nível AA como linha de base]
 
 ## Operação
 
-- [ex: toda métrica de negócio crítica tem alerta configurado antes do release]
-- [ex: rollback documentado para cada migration de schema]
+- [TODO: toda métrica de negócio crítica tem alerta configurado antes do release]
+- [TODO: rollback documentado para cada migration de schema]
 
 ---
 

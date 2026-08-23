@@ -2,6 +2,10 @@
 
 Bem-vindo ao repositório de **Spec-Driven Secure Development (SDSD)**, um guia prático e opinativo para times que constroem software moderno integrando Agentes de IA, segurança nativa e excelência técnica.
 
+Este repositório é o **manual e o kit de templates** da metodologia. Ele não é um
+projeto de aplicação já configurado: a estrutura `specs/`, os agentes e as skills
+descritos no guia são criados no projeto que adota o SDSD, a partir de `templates/`.
+
 ## 🧠 O que é SDSD?
 
 SDSD é um fluxo de trabalho onde **toda funcionalidade começa com especificações rigorosas escritas ANTES do código**. Em vez de usar "prompts soltos" ou tratar a Inteligência Artificial como um adivinho de ideias vagas, a IA é usada para materializar e codificar especificações formais, mantendo o humano estritamente no controle da direção do produto, da arquitetura e da qualidade final (UX).
@@ -42,6 +46,10 @@ Skill `changelog` atualiza o `CHANGELOG.md`. Decisões irreversíveis viram um A
 
 - 👉 **[Guia técnico completo (GUIA-SDSD.md)](GUIA-SDSD.md)** — fluxo detalhado, prompts, prevenção de N+1/race conditions/memory leaks, CI/CD
 - 📁 **[Templates prontos (`templates/`)](templates/)** — `principles.md`, `AGENTS.md`, `.pre-commit-config.yaml` e subagent `security-auditor` para copiar direto no seu projeto
+
+O diretório [`.harness/`](.harness/) contém contexto operacional reutilizável,
+como glossário, limites, padrões e modelos de registros. Ele complementa os
+templates de um projeto consumidor; não substitui a pasta `specs/` descrita no guia.
 
 ---
 *"Escreva boas especificações. Deixe a IA cuidar da digitação."*

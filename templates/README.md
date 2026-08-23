@@ -6,10 +6,16 @@ Cópias prontas dos arquivos referenciados no [GUIA-SDSD.md](../GUIA-SDSD.md). C
 
 | Arquivo | Destino no seu projeto | Quando usar |
 |---|---|---|
+| [`specs/mission.md`](specs/mission.md) | `specs/mission.md` | Constituição — missão e público |
 | [`specs/principles.md`](specs/principles.md) | `specs/principles.md` | Sempre — é o 2º arquivo da constituição (PARTE 1, Passo 1 do guia) |
+| [`specs/tech-stack.md`](specs/tech-stack.md) | `specs/tech-stack.md` | Constituição — stack e esteira de segurança |
+| [`specs/roadmap.md`](specs/roadmap.md) | `specs/roadmap.md` | Constituição — fases do trabalho |
+| [`specs/STATE.md`](specs/STATE.md) | `specs/STATE.md` | Memória contínua entre sessões |
+| [`specs/_feature/`](specs/_feature/) | `specs/YYYY-MM-DD-nome/` | Stubs de todos os artefatos de uma feature |
 | [`AGENTS.md`](AGENTS.md) | `AGENTS.md` (raiz) | Sempre — fonte única das regras de código (PARTE 10) |
 | [`.pre-commit-config.yaml`](.pre-commit-config.yaml) | `.pre-commit-config.yaml` (raiz) | Quando configurar o shift-left local (PARTE 4.1) |
 | [`.claude/agents/security-auditor.md`](.claude/agents/security-auditor.md) | `.claude/agents/security-auditor.md` | Quando usar Claude Code com subagents reais (PARTE 6) |
+| [`skills/`](skills/) | `skills/` | Skills reutilizáveis de changelog e feature spec |
 
 ## Setup rápido
 
@@ -30,6 +36,6 @@ pre-commit install
 
 ## Próximos passos
 
-1. Crie a constituição completa: `mission.md`, `tech-stack.md`, `roadmap.md` (ao lado de `principles.md`)
-2. Sincronize `AGENTS.md` para `CLAUDE.md` e demais ferramentas (PARTE 10 do guia)
-3. Crie subagents adicionais conforme necessidade: `code-reviewer`, `performance-optimizer`, `feature-developer`
+1. Edite os placeholders da constituição e do `AGENTS.md`.
+2. Copie `specs/_feature/` para uma pasta datada quando iniciar uma feature.
+3. Sincronize `AGENTS.md` para `CLAUDE.md` e demais ferramentas (PARTE 10 do guia).

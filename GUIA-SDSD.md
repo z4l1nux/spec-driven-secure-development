@@ -677,7 +677,7 @@ O guia usa Semgrep, Trivy e TruffleHog como referência, mas cada categoria tem 
 | detect-secrets | Pre-commit local | Plugin de pre-commit hook, não varre histórico |
 | git-secrets | Pre-commit local | Foco em credenciais AWS, leve |
 
-> **Regra:** documente a ferramenta escolhida em `specs/tech-stack.md` na seção Security. Todos no time e o CI usam a mesma.
+> **Regra:** documente a ferramenta escolhida em `specs/tech-stack.md` na seção Security. O scan local e o CI devem cobrir a mesma categoria e ter severidade equivalente; se usarem ferramentas diferentes, documente o motivo e os comandos de ambos.
 
 ---
 
@@ -691,7 +691,7 @@ O CI roda em minutos; o pre-commit roda em segundos. Falha rápido, custa barato
 ```yaml
 repos:
   - repo: https://github.com/returntocorp/semgrep
-    rev: v1.x.x
+    rev: v1.92.0
     hooks:
       - id: semgrep
         args: ["--config=auto", "--error", "--severity=ERROR"]
@@ -703,7 +703,7 @@ repos:
         args: ["--baseline", ".secrets.baseline"]
 
   - repo: https://github.com/aquasecurity/trivy
-    rev: v0.x.x
+    rev: v0.57.0
     hooks:
       - id: trivy
         args: ["fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]
@@ -797,15 +797,12 @@ git push --force --all
 
 ### 4.4 Semgrep (SAST) — workflow CI
 
-`.github/workflows/semgrep.yml`:
+`.github/workflows/semgrep-scan.yml`:
 
 ```yaml
 name: Semgrep Security Scan
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
     branches:
       - "**"
@@ -816,17 +813,17 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
       - name: Install Semgrep
         run: |
           python -m pip install --upgrade pip
-          pip install semgrep
+          pip install setuptools==80.9.0 semgrep==1.92.0
 
       - name: Run Semgrep (Enforce by PARANOIA_LEVEL)
         run: |
@@ -871,12 +868,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0  # necessário para varrer todo o histórico git
 
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@3ab759fef4bb5935d4fe9ac68b503d05346b8364 # pinned commit
         with:
           path: ./
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
@@ -891,32 +888,32 @@ jobs:
 
 ---
 
-### 4.6 Trivy (SCA — Dependências) — workflow CI
+### 4.6 vet (SCA — Dependências) — workflow CI deste repositório
 
-`.github/workflows/trivy.yml`:
+O workflow deste kit usa `vet` para SCA no CI. Um projeto consumidor pode escolher Trivy ou outra alternativa, mas deve registrar a escolha em `specs/tech-stack.md` e manter o gate de severidade equivalente.
+
+`.github/workflows/vet-sca.yml`:
 
 ```yaml
-name: Trivy Dependency Scan
+name: vet OSS Components
 
 on:
-  push:
-    branches: ["**"]
   pull_request:
-    branches: ["**"]
+  push:
+    branches: [main]
 
 jobs:
-  trivy:
+  vet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-
-      - name: Trivy (SCA — filesystem)
-        uses: aquasecurity/trivy-action@master
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: vet (SCA)
+        uses: safedep/vet-action@803d55e5de51766bd92c106d6bc1eb1a1858e4a3 # v1
         with:
-          scan-type: fs
-          severity: HIGH,CRITICAL
-          exit-code: 1
+          policy: .github/policies/vet-policy.yml
 ```
+
+`vet` é o SCA do CI deste repositório; o pre-commit usa Trivy como feedback local rápido. Essa diferença é intencional e deve ser registrada no `tech-stack.md` de qualquer consumidor que adote o mesmo arranjo.
 
 ---
 

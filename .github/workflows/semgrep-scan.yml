@@ -1,9 +1,6 @@
 name: Semgrep Security Scan
 
 on:
-  push:
-    branches:
-      - "**"
   pull_request:
     branches:
       - "**"

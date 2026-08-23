@@ -6,7 +6,7 @@ Este repositório é um guia e kit de templates para Spec-Driven Secure Developm
 
 ## Regras
 
-- Mantenha o conteúdo em português, salvo nomes técnicos, comandos e identificadores.
+- Mantenha o conteúdo normativo em português; documentação pública pode ter edição inglesa, que deve permanecer semanticamente alinhada.
 - Trate `GUIA-SDSD.md` e `templates/` como contrato público: mudanças no guia devem refletir nos templates.
 - Decisões deste kit ficam em `.harness/adr/`; decisões de um projeto consumidor ficam em `specs/adr/`.
 - Valide documentação com `python scripts/validate_docs.py` antes de abrir um PR.

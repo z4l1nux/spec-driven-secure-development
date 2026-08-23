@@ -1,5 +1,7 @@
 # Templates SDSD
 
+[English](README.en.md)
+
 Cópias prontas dos arquivos referenciados no [GUIA-SDSD.md](../GUIA-SDSD.md). Eles materializam o bootstrap do projeto consumidor; ajuste os placeholders entre `[colchetes]` depois do Grill.
 
 ## Conteúdo
@@ -13,6 +15,7 @@ Cópias prontas dos arquivos referenciados no [GUIA-SDSD.md](../GUIA-SDSD.md). E
 | [`specs/STATE.md`](specs/STATE.md) | `specs/STATE.md` | Memória contínua entre sessões |
 | [`specs/_feature/`](specs/_feature/) | `specs/YYYY-MM-DD-nome/` | Stubs de todos os artefatos de uma feature |
 | [`AGENTS.md`](AGENTS.md) | `AGENTS.md` (raiz) | Sempre — fonte única das regras de código (PARTE 10) |
+| [`AGENTS.en.md`](AGENTS.en.md) | Referência em inglês | Tradução de consulta; o arquivo copiado continua sendo `AGENTS.md` |
 | [`.pre-commit-config.yaml`](.pre-commit-config.yaml) | `.pre-commit-config.yaml` (raiz) | Quando configurar o shift-left local (PARTE 4.1) |
 | [`.claude/agents/`](.claude/agents/) | `.claude/agents/` | Perfis `security-auditor`, `code-reviewer`, `feature-developer` e `performance-optimizer` (PARTE 6) |
 | [`skills/`](skills/) | `skills/` | Skills reutilizáveis de changelog e feature spec |

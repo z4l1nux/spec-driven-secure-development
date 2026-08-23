@@ -1,0 +1,34 @@
+name: vet OSS Components
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  vet:
+    name: vet
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Run vet
+        id: vet
+        uses: safedep/vet-action@v1
+        with:
+          policy: .github/policies/vet-policy.yml
+          trusted-registries: |
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

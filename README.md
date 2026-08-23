@@ -6,6 +6,26 @@ Este repositório é o **manual e o kit de templates** da metodologia. Ele não 
 projeto de aplicação já configurado: a estrutura `specs/`, os agentes e as skills
 descritos no guia são criados no projeto que adota o SDSD, a partir de `templates/`.
 
+## 🧭 Como as partes se conectam
+
+Existem dois contextos que não devem ser misturados:
+
+| Contexto | Fonte | Responsabilidade |
+|---|---|---|
+| Kit SDSD | `GUIA-SDSD.md`, `templates/`, `.harness/`, `.github/workflows/` | Ensinar, fornecer e validar a metodologia |
+| Projeto consumidor | `specs/`, `AGENTS.md`, `skills/`, `.claude/`, `.pre-commit-config.yaml` e código | Aplicar a metodologia a um produto real |
+
+O caminho semântico é:
+
+`GUIA-SDSD.md` define o fluxo → `templates/` materializa o bootstrap →
+`specs/` registra a constituição e cada feature → `AGENTS.md` governa os agentes
+→ `skills/` automatiza tarefas repetíveis → `.claude/` fornece perfis de agente
+→ pre-commit e CI validam → `CHANGELOG.md`, ADRs e `STATE.md` preservam o resultado.
+
+O diretório `.harness/` contém o contexto operacional deste kit. Ele orienta a
+manutenção do próprio repositório e só deve ser levado a um projeto consumidor
+quando o time decidir adotar esse contexto como parte de sua governança.
+
 ## 🧠 O que é SDSD?
 
 SDSD é um fluxo de trabalho onde **toda funcionalidade começa com especificações rigorosas escritas ANTES do código**. Em vez de usar "prompts soltos" ou tratar a Inteligência Artificial como um adivinho de ideias vagas, a IA é usada para materializar e codificar especificações formais, mantendo o humano estritamente no controle da direção do produto, da arquitetura e da qualidade final (UX).
@@ -45,7 +65,7 @@ Skill `changelog` atualiza o `CHANGELOG.md`. Decisões irreversíveis viram um A
 ## 📖 Documentação e Templates
 
 - 👉 **[Guia técnico completo (GUIA-SDSD.md)](GUIA-SDSD.md)** — fluxo detalhado, prompts, prevenção de N+1/race conditions/memory leaks, CI/CD
-- 📁 **[Templates prontos (`templates/`)](templates/)** — `principles.md`, `AGENTS.md`, `.pre-commit-config.yaml` e subagent `security-auditor` para copiar direto no seu projeto
+- 📁 **[Templates prontos (`templates/`)](templates/)** — constituição, specs de feature, skills, agentes e pre-commit para copiar direto no seu projeto
 
 O diretório [`.harness/`](.harness/) contém contexto operacional reutilizável,
 como glossário, limites, padrões e modelos de registros. Ele complementa os

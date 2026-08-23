@@ -823,7 +823,7 @@ jobs:
       - name: Install Semgrep
         run: |
           python -m pip install --upgrade pip
-          pip install semgrep==1.92.0
+          pip install setuptools==80.9.0 semgrep==1.92.0
 
       - name: Run Semgrep (Enforce by PARANOIA_LEVEL)
         run: |
